@@ -1,0 +1,165 @@
+@startuml 04_error_handling_flow
+!theme plain
+
+title Error Handling Flow\nRailway-Oriented Programming with Result Monad
+
+actor User
+
+participant "Presentation\nCLI.Command.Greet" as Presentation #FFE4E1
+participant "Application\nUsecase.Greet" as Application #E8F5E9
+participant "Infrastructure\nAdapter.Console_Writer" as Infrastructure #E6F3FF
+participant "Domain\nError.Result" as Domain #FFF9E6
+
+== Happy Path (Success) ==
+
+User -> Presentation : ./bin/greeter Alice
+activate Presentation
+
+Presentation -> Presentation : Create Command DTO
+note right
+  ```ada
+  Cmd := Application.Command.Greet.Create("Alice");
+  ```
+end note
+
+Presentation -> Application : Execute_Greet_UseCase(Cmd)
+activate Application
+
+Application -> Infrastructure : Write("Hello, Alice!")
+activate Infrastructure
+
+Infrastructure -> Infrastructure : Ada.Text_IO.Put_Line
+note right
+  **Try_To_Result Pattern**
+  Catches exceptions
+  Transforms to Result
+end note
+
+Infrastructure --> Application : Ok(Unit)
+deactivate Infrastructure
+
+Application --> Presentation : Ok(Unit)
+deactivate Application
+
+Presentation -> Presentation : Check Is_Ok(Result)
+Presentation --> User : Exit code 0
+deactivate Presentation
+
+== Error Path (Infrastructure Failure) ==
+
+User -> Presentation : ./bin/greeter Bob
+activate Presentation
+
+Presentation -> Application : Execute_Greet_UseCase(Cmd)
+activate Application
+
+Application -> Infrastructure : Write("Hello, Bob!")
+activate Infrastructure
+
+Infrastructure -> Infrastructure : Ada.Text_IO.Put_Line\nRAISES EXCEPTION
+note right #FFCCCC
+  **Exception Boundary**
+  Try_To_Result catches
+  exception and converts
+  to Error variant
+end note
+
+Infrastructure -> Domain : Error(\n  Kind => Infrastructure_Error,\n  Message => "I/O failed"\n)
+activate Domain
+
+Domain --> Infrastructure : Error(Infrastructure_Error)
+deactivate Domain
+
+Infrastructure --> Application : Error(Infrastructure_Error)
+deactivate Infrastructure
+
+Application --> Presentation : Error(Infrastructure_Error)
+deactivate Application
+
+Presentation -> Presentation : Check Is_Error(Result)
+Presentation -> Presentation : Extract Error_Info
+note right
+  ```ada
+  Error_Info : constant
+    Application.Error.Error_Type :=
+      Unit_Result.Error_Info(Result);
+
+  Message : constant String :=
+    Application.Error.Error_Strings
+      .To_String(Error_Info.Message);
+  ```
+end note
+
+Presentation -> Presentation : Pattern match Error_Kind
+note right
+  ```ada
+  case Error_Info.Kind is
+    when Application.Error
+           .Infrastructure_Error =>
+      Put_Line("A system error occurred.");
+  end case;
+  ```
+end note
+
+Presentation --> User : "Error: I/O failed"\nExit code 1
+deactivate Presentation
+
+== Error Path (Domain Validation) ==
+
+User -> Presentation : ./bin/greeter ""
+activate Presentation
+
+Presentation -> Application : Execute_Greet_UseCase(Cmd)
+activate Application
+
+Application -> Domain : Person.Create("")
+activate Domain
+
+Domain -> Domain : Validate name\n(length > 0)
+note right #FFCCCC
+  **Domain Validation**
+  Pure function check
+  No exceptions
+end note
+
+Domain --> Application : Error(Validation_Error)
+deactivate Domain
+
+Application --> Presentation : Error(Validation_Error)
+deactivate Application
+
+Presentation -> Presentation : Extract Error_Info
+Presentation -> Presentation : Pattern match
+note right
+  ```ada
+  case Error_Info.Kind is
+    when Application.Error
+           .Validation_Error =>
+      Put_Line("Please provide a valid name.");
+  end case;
+  ```
+end note
+
+Presentation --> User : "Error: Name cannot be empty"\nExit code 1
+deactivate Presentation
+
+legend right
+  **Error Handling Rules**
+  ════════════════════════════════════
+  1. **Domain**: Validates, returns Error variant
+  2. **Application**: Orchestrates, propagates errors
+  3. **Infrastructure**: Catches exceptions,
+     converts to Error with Try_To_Result
+  4. **Presentation**: Pattern matches errors,
+     displays user-friendly messages
+
+  **Key Patterns**
+  ════════════════════════════════════
+  • Result[T] monad (not exceptions)
+  • Try_To_Result at boundaries
+  • Application.Error for Presentation
+  • Domain.Error for Infrastructure
+  • Railway-oriented programming
+endlegend
+
+@enduml

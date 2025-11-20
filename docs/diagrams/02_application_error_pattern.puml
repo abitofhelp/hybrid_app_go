@@ -1,0 +1,139 @@
+@startuml 02_application_error_pattern
+!theme plain
+
+title Application.Error Re-export Pattern\nPreventing Transitive Domain Access
+
+package "Domain Layer" as Domain #FFF9E6 {
+  class "Domain.Error" as DomainError {
+    + Error_Type : record
+    + Error_Kind : enum
+    + Error_Strings : bounded string
+    --
+    Canonical error definitions
+  }
+}
+
+package "Application Layer" as Application #E8F5E9 {
+  class "Application.Error" as AppError {
+    + Error_Type : subtype
+    + Error_Kind : subtype
+    + Error_Strings : renames
+    + Validation_Error : constant
+    + Infrastructure_Error : constant
+    --
+    **Re-exports Domain.Error**
+    Zero overhead (subtypes/renames)
+  }
+
+  class "Application.Port.Outward.Writer" as Writer {
+    + Unit_Result : Result[Unit]
+    --
+    Uses Domain.Error.Result
+  }
+}
+
+package "Presentation Layer" as Presentation #FFE4E1 {
+  class "Presentation.CLI.Command.Greet" as GreetCmd {
+    + Run() : Integer
+    --
+    Uses **Application.Error**
+    NOT Domain.Error
+  }
+}
+
+package "Infrastructure Layer" as Infrastructure #E6F3FF {
+  class "Infrastructure.Adapter.Console_Writer" as ConsoleWriter {
+    + Write(Message) : Result
+    --
+    Uses **Domain.Error** directly
+    (allowed for Infrastructure)
+  }
+}
+
+' Relationships
+DomainError <.. AppError : re-exports\n(subtype/renames)
+AppError <.. Writer : uses
+AppError <.. GreetCmd : uses ✅
+DomainError <.. ConsoleWriter : uses ✅
+
+' Forbidden
+GreetCmd .right.> DomainError #red : ❌ FORBIDDEN\nMust use Application.Error
+
+note right of AppError
+  **Re-export Pattern**
+  ═══════════════════════════
+
+  ```ada
+  with Domain.Error;
+
+  package Application.Error is
+    -- Re-export types
+    subtype Error_Type is
+      Domain.Error.Error_Type;
+
+    subtype Error_Kind is
+      Domain.Error.Error_Kind;
+
+    package Error_Strings renames
+      Domain.Error.Error_Strings;
+
+    -- Convenience constants
+    Validation_Error :
+      constant Error_Kind :=
+        Domain.Error.Validation_Error;
+  end Application.Error;
+  ```
+end note
+
+note bottom of GreetCmd
+  **Presentation Usage**
+  ═══════════════════════
+
+  ```ada
+  with Application.Error;  -- ✅
+  -- NOT: with Domain.Error; ❌
+
+  Error_Info : constant
+    Application.Error.Error_Type := ...;
+
+  case Error_Info.Kind is
+    when Application.Error.Validation_Error =>
+      Put_Line("Invalid input");
+  end case;
+  ```
+end note
+
+note bottom of ConsoleWriter
+  **Infrastructure Usage**
+  ════════════════════════
+
+  ```ada
+  with Domain.Error;  -- ✅ Allowed
+
+  -- Infrastructure CAN access
+  -- Domain.Error directly
+  return Domain.Error.Result.Error(
+    Kind => Domain.Error.Infrastructure_Error,
+    Message => "I/O failed"
+  );
+  ```
+end note
+
+legend right
+  **Pattern Benefits**
+  ═══════════════════════════════
+  ✅ Zero overhead (subtype/renames)
+  ✅ Compile-time enforcement
+  ✅ Clear boundary between layers
+  ✅ Single source of truth (Domain)
+  ✅ Presentation decoupled from Domain
+
+  **Why This Matters**
+  ═══════════════════════════════
+  • Domain is shareable across apps
+  • Application/Presentation are app-specific
+  • Multiple UIs can use same Domain
+  • Forces use case thinking
+endlegend
+
+@enduml

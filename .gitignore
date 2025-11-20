@@ -1,0 +1,208 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+
+###############################################################################
+# Go Build Artifacts
+###############################################################################
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build artifacts
+*.o
+*.a
+
+###############################################################################
+# IDEs and Editors
+###############################################################################
+
+# GoLand / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+.run/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Emacs
+*~
+\#*\#
+.#*
+
+# Vim
+*.swp
+*.swo
+*.swn
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Eclipse
+.project
+.cproject
+.settings/
+.metadata/
+
+###############################################################################
+# Operating System Files
+###############################################################################
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+###############################################################################
+# AI Agentic Assistants
+###############################################################################
+
+.claude/
+
+###############################################################################
+# Debugging and Development
+###############################################################################
+
+# Debugger files
+*.gdb_history
+.gdb_history
+.gdbinit
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# Profiling and Coverage
+*.prof
+*.pprof
+coverage/
+*.coverage
+
+###############################################################################
+# Documentation Build
+###############################################################################
+
+# Generated API documentation
+docs/api/
+
+# Sphinx/other doc generators
+docs/_build/
+docs/html/
+docs/latex/
+
+# mdBook artifacts
+docs/book/book/
+
+###############################################################################
+# Temporary and Backup Files
+###############################################################################
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+###############################################################################
+# Testing
+###############################################################################
+
+# Test artifacts
+*.test_results
+*.test_output
+
+# Test coverage
+htmlcov/
+.pytest_cache/
+
+###############################################################################
+# Logs
+###############################################################################
+
+*.log
+
+###############################################################################
+# Python (for automation scripts)
+###############################################################################
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+###############################################################################
+# Compressed Archives
+###############################################################################
+
+*.zip
+*.tar.gz

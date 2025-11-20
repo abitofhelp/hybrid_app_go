@@ -1,0 +1,125 @@
+@startuml 03_package_structure
+!theme plain
+skinparam componentStyle rectangle
+
+title Hybrid_App_Ada - Package Structure\nActual Packages in Each Layer
+
+frame "Bootstrap Layer" #FFEBCD {
+  component "Bootstrap.CLI" as BootstrapCLI
+  note right of BootstrapCLI
+    **Composition Root**
+    - Wires all dependencies
+    - Generic instantiation
+    - Application entry point
+  end note
+}
+
+frame "Presentation Layer" #FFE4E1 {
+  component "Presentation.CLI.Command.Greet" as PresentationGreet
+  note right of PresentationGreet
+    **Depends on:**
+    - Application.Command.Greet
+    - Application.Usecase.Greet
+    - Application.Port.Outward.Writer
+    - **Application.Error** ✅
+
+    **Cannot access:**
+    ❌ Domain.* packages
+  end note
+}
+
+frame "Infrastructure Layer" #E6F3FF {
+  component "Infrastructure.Adapter.Console_Writer" as InfraConsole
+  note right of InfraConsole
+    **Depends on:**
+    - Application.Port.Outward.Writer
+    - Domain.Error (direct) ✅
+    - Domain.Value_Object
+  end note
+}
+
+frame "Application Layer" #E8F5E9 {
+  component "Application.Error" as AppError #FFFF99
+  component "Application.Command.Greet" as AppCommand
+  component "Application.Usecase.Greet" as AppUsecase
+  component "Application.Port.Outward.Writer" as AppWriter
+  component "Application.Model.Unit" as AppUnit
+
+  note right of AppError
+    **Re-exports Domain.Error**
+    For Presentation layer use
+
+    ```ada
+    with Domain.Error;
+
+    package Application.Error is
+      subtype Error_Type is
+        Domain.Error.Error_Type;
+      subtype Error_Kind is
+        Domain.Error.Error_Kind;
+      package Error_Strings renames
+        Domain.Error.Error_Strings;
+    end Application.Error;
+    ```
+  end note
+}
+
+frame "Domain Layer" #FFF9E6 {
+  component "Domain.Error" as DomainError
+  component "Domain.Error.Result.Generic_Result[T]" as DomainResult
+  component "Domain.Value_Object.Person" as DomainPerson
+
+  note right of DomainError
+    **Zero dependencies**
+    Pure domain logic
+    Canonical error types
+  end note
+}
+
+' Dependencies (center-seeking - all point inward)
+PresentationGreet -down-> AppCommand : uses DTO
+PresentationGreet -down-> AppUsecase : calls
+PresentationGreet -down-> AppWriter : uses Result
+PresentationGreet -down-> AppError : uses ✅
+
+InfraConsole -down-> AppWriter : implements
+InfraConsole -down-> DomainError : uses ✅
+
+AppCommand -down-> DomainPerson : uses
+AppUsecase -down-> DomainPerson : validates
+AppWriter -down-> DomainResult : instantiates
+AppError -down-> DomainError : re-exports
+
+' Forbidden dependency (shown as violation)
+PresentationGreet .right.> DomainError #red : ❌ FORBIDDEN\nNo transitive access
+
+legend bottom
+  **Package Naming Convention**
+  ════════════════════════════════════
+  All packages use hierarchical naming:
+  • Parent.Child.Grandchild pattern
+  • Singular nouns (not plural)
+  • Lowercase filenames with dashes
+
+  **Example:**
+  • Package: Domain.Value_Object.Person
+  • File: domain-value_object-person.ads
+
+  **Dependency Rules**
+  ════════════════════════════════════
+  ✅ Presentation → Application.* packages
+  ✅ Infrastructure → Application.* + Domain.* packages
+  ✅ Application → Domain.* packages
+  ❌ Presentation → Domain.* packages (forbidden!)
+
+  **Key Insight:**
+  Infrastructure and Application CAN access Domain.
+  Presentation is the ONLY layer that cannot.
+
+  **Why?**
+  Domain is shareable across applications.
+  Presentation is application-specific.
+  Application acts as the contract layer.
+endlegend
+
+@enduml

@@ -1,0 +1,194 @@
+feat: Port Ada hybrid architecture to Go with domain Result/Option monads
+
+BREAKING CHANGE: Complete rewrite of monad infrastructure
+
+## Summary
+
+Port Ada hybrid architecture project to Go, implementing custom Result/Option
+monads and establishing strict architectural boundaries with ZERO external
+dependencies in domain layer.
+
+## Major Changes
+
+### 1. Custom Monad Implementation (Removes samber/mo dependency)
+- Implement domain/error/result.go: Full-featured Result[T] monad (388 lines)
+  * Ok/Err constructors, IsOk/IsError queries
+  * Map, MapTo, AndThen, AndThenTo for composition
+  * Fallback, Recover, RecoverWith for error recovery
+  * Tap for side effects (logging)
+- Implement domain/valueobject/option.go: Full-featured Option[T] monad (199 lines)
+  * Some/None constructors, IsSome/IsNone queries
+  * Map, MapTo, AndThen, AndThenTo, Filter
+  * OrElse, OrElseWith for fallback
+- Remove samber/mo from all 7 modules
+- Domain layer now has ZERO external dependencies
+
+### 2. Architecture Validation Infrastructure
+- Port scripts/makefile/arch_guard.py from Ada project (adapted for Go)
+  * Validates layer dependencies (domain→application→infrastructure/presentation→bootstrap)
+  * Checks go.mod configurations match architecture rules  
+  * Detects Presentation→Domain violations
+  * Prevents lateral dependencies (Presentation ↔ Infrastructure)
+  * Checks for test framework imports in production code
+- Create test/integration_example_test.go demonstrating testify usage in /test
+- All architecture rules passing (0 violations)
+
+### 3. Fix Critical Architecture Violation
+- BEFORE: Presentation layer imported domain/error directly (VIOLATION!)
+- AFTER: Presentation imports ONLY application/error (re-exported types)
+- Enhance application/error to re-export Result[T] type via type alias
+- Result: Strict architectural boundaries enforced
+
+### 4. Domain Layer: ZERO External Dependencies
+- BEFORE: domain/go.mod required testify v1.11.1 (VIOLATION!)
+- AFTER: domain/go.mod has ZERO dependencies
+- Rewrite all domain tests (person_test.go) to use ONLY stdlib testing
+  * Replace require.True → if !cond { t.Fatalf() }
+  * Replace assert.Equal → if got != want { t.Errorf() }
+  * Replace assert.Contains → if !strings.Contains() { t.Errorf() }
+- All 6 domain tests passing with stdlib only
+
+### 5. Build Infrastructure
+- Port Makefile from Ada project (replace alr/gprbuild with go build)
+  * 30+ targets: build, test, check-arch, stats, clean, etc.
+  * Color-coded output (Green/Yellow/Red/Cyan)
+  * Integrated arch_guard.py validation
+  * All targets tested and working
+- Update .gitignore for GoLand/IntelliJ IDEA development
+  * Remove Ada-specific entries (Alire, GPRbuild, .ali, .gpr)
+  * Add GoLand entries (.idea/, *.iml, .run/)
+  * Add Go artifacts (*.prof, go.work, etc.)
+
+### 6. Testing Policy by Location
+- /src folder (domain/application/infrastructure/presentation/bootstrap):
+  * ❌ NO external test frameworks (including testify)
+  * ✅ Use ONLY stdlib testing package
+  * Co-located *_test.go files use stdlib only
+- /test folder (integration/e2e tests):
+  * ✅ External test frameworks allowed (testify)
+  * Separate module with own go.mod
+  * Can depend on all /src modules
+
+### 7. Documentation
+- Create ARCHITECTURE_VALIDATION.md: Validation results and usage
+- Create PORT_SUMMARY.md: Comprehensive port documentation
+- Create ZERO_DEPENDENCIES.md: Domain dependency policy and testing guide
+- Create COMMIT_MESSAGE.txt: This commit message
+
+## Architecture Validation Results
+
+```
+✅ go.mod Configuration: VALID
+  ✓ domain          - dependencies: none (ZERO!)
+  ✓ application     - dependencies: domain
+  ✓ infrastructure  - dependencies: application, domain
+  ✓ presentation    - dependencies: application
+  ✓ bootstrap       - dependencies: domain
+
+✅ Source File Dependencies: VALID
+  0 violations detected
+
+✅ Architecture validation PASSED - All rules satisfied!
+```
+
+## Test Results
+
+```
+Domain Tests: 6/6 PASS (stdlib testing only)
+Build: SUCCESS
+Application: ./greeter Alice → "Hello, Alice!"
+```
+
+## File Statistics
+
+- New files: 9
+  * domain/error/result.go (388 lines)
+  * domain/valueobject/option.go (199 lines)
+  * scripts/makefile/arch_guard.py (300+ lines)
+  * Makefile (300+ lines)
+  * ARCHITECTURE_VALIDATION.md
+  * PORT_SUMMARY.md
+  * ZERO_DEPENDENCIES.md
+  * test/go.mod
+  * test/integration_example_test.go
+- Modified files: 8
+  * domain/valueobject/person.go (remove samber/mo)
+  * domain/valueobject/person_test.go (stdlib only)
+  * domain/go.mod (remove testify)
+  * application/port/outward/writer.go
+  * application/usecase/greet.go
+  * application/error/error.go (re-export Result)
+  * infrastructure/adapter/consolewriter.go
+  * presentation/cli/command/greet.go
+  * .gitignore (GoLand-specific)
+- Total Go code added: ~1,500 lines
+- Total documentation added: ~1,000 lines
+
+## Breaking Changes
+
+1. Removed samber/mo dependency (replaced with custom Result/Option)
+2. Domain tests now use stdlib testing only (no testify)
+3. Changed Result/Option API from mo.* to domerr.* / valueobject.*
+4. Presentation layer MUST use application/error, NOT domain/error
+
+## Migration Guide
+
+### For Result[T] usage:
+```go
+// Before (samber/mo)
+import "github.com/samber/mo"
+result := mo.Ok[string]("value")
+if result.IsOk() {
+    v := result.MustGet()
+}
+
+// After (custom domain)
+import domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
+result := domerr.Ok[string]("value")
+if result.IsOk() {
+    v := result.Value()
+}
+```
+
+### For domain testing:
+```go
+// Before (testify)
+require.True(t, result.IsOk())
+assert.Equal(t, want, got)
+
+// After (stdlib only)
+if !result.IsOk() {
+    t.Fatalf("expected Ok, got Error: %v", result.ErrorInfo())
+}
+if got != want {
+    t.Errorf("got %v, want %v", got, want)
+}
+```
+
+## Verification Commands
+
+```bash
+# Validate architecture
+make check-arch
+
+# Run domain tests (stdlib only)
+make test-domain
+
+# Build and run
+make build && make run
+
+# View statistics
+make stats
+```
+
+## References
+
+- Architecture guard script: scripts/makefile/arch_guard.py
+- Domain Result monad: domain/error/result.go
+- Domain Option monad: domain/valueobject/option.go
+- Testing policy: ZERO_DEPENDENCIES.md
+- Architecture docs: ARCHITECTURE_VALIDATION.md
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
