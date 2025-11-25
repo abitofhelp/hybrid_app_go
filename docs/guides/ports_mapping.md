@@ -28,14 +28,15 @@ package port
 
 import (
     "context"
-    "github.com/samber/mo"
+    domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
+    "github.com/abitofhelp/hybrid_app_go/application/model"
 )
 
 // WriterPort is an OUTPUT PORT interface
 // Application defines this interface
 // Infrastructure implements it
 type WriterPort interface {
-    Write(ctx context.Context, message string) mo.Result[Unit]
+    Write(ctx context.Context, message string) domerr.Result[model.Unit]
 }
 ```
 
@@ -52,7 +53,7 @@ type GreetUseCase[W WriterPort] struct {
     writer W  // Generic type parameter constrained by WriterPort interface
 }
 
-func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd port.GreetCommand) mo.Result[port.Unit] {
+func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd port.GreetCommand) domerr.Result[model.Unit] {
     // ... create person ...
     message := person.GreetingMessage()
     return uc.writer.Write(ctx, message)  // Call through port
@@ -144,14 +145,15 @@ package port
 
 import (
     "context"
-    "github.com/samber/mo"
+    domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
+    "github.com/abitofhelp/hybrid_app_go/application/model"
 )
 
 // GreetPort is an INPUT PORT interface
 // Presentation layer calls this
 // Application layer implements this (use case)
 type GreetPort interface {
-    Execute(ctx context.Context, cmd GreetCommand) mo.Result[Unit]
+    Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit]
 }
 ```
 
@@ -164,7 +166,7 @@ type GreetPort interface {
 
 ```go
 // GreetUseCase implements GreetPort interface
-func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd GreetCommand) mo.Result[Unit] {
+func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit] {
     // Use case logic...
 }
 ```

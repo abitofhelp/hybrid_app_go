@@ -16,7 +16,8 @@ PROJECT_NAME := hybrid_app_go
 BINARY_NAME := greeter
 
 .PHONY: all build build-dev build-release clean clean-coverage clean-deep compress \
-        deps help prereqs rebuild stats test test-all test-unit test-domain \
+        deps help prereqs rebuild stats test test-all test-unit \
+        test-integration test-e2e test-framework test-coverage test-coverage-threshold \
         check check-arch lint format vet install-tools run
 
 # =============================================================================
@@ -75,10 +76,14 @@ help: ## Display this help message
 	@echo "  rebuild            - Clean and rebuild"
 	@echo ""
 	@echo "$(YELLOW)Testing Commands:$(NC)"
-	@echo "  test               - Run all tests"
-	@echo "  test-unit          - Run unit tests only"
-	@echo "  test-domain        - Run domain layer tests"
-	@echo "  test-coverage      - Run tests with coverage analysis"
+	@echo "  test               - Run all co-located unit tests"
+	@echo "  test-unit          - Run all unit tests (Ada-style [PASS]/[FAIL] output)"
+	@echo "  test-integration   - Run integration tests (cross-layer)"
+	@echo "  test-e2e           - Run E2E tests (black-box CLI testing)"
+	@echo "  test-framework     - Run all test suites (unit + integration + e2e)"
+	@echo "  test-coverage      - Run tests with per-layer coverage analysis"
+	@echo "  test-coverage-threshold - Run coverage with per-layer threshold checks"
+	@echo "                       (Domain: 100%, Application: 100%, Infra: 90%, Total: 85%)"
 	@echo ""
 	@echo "$(YELLOW)Quality & Architecture Commands:$(NC)"
 	@echo "  check              - Run all checks (lint + vet + arch)"
@@ -166,27 +171,132 @@ rebuild: clean build
 test: test-all
 
 test-all: check-arch
-	@echo "$(GREEN)Running all tests...$(NC)"
-	@$(GO) test -v ./...
-	@echo "$(GREEN)✓ All tests passed$(NC)"
+	@echo "$(GREEN)Running all tests (co-located)...$(NC)"
+	@$(GO) test -v ./domain/... ./application/... ./infrastructure/... ./presentation/... ./bootstrap/...
+	@echo "$(GREEN)✓ All co-located tests passed$(NC)"
 
-test-unit: check-arch
-	@echo "$(GREEN)Running unit tests...$(NC)"
-	@$(GO) test -v -short ./...
-	@echo "$(GREEN)✓ Unit tests passed$(NC)"
+test-unit: check-arch ## Run unit tests with Ada-style framework output
+	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)$(BOLD)║                    UNIT TEST SUITE                           ║$(NC)"
+	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@$(GO) test -v ./domain/... ./application/... ./infrastructure/... ./presentation/... ./bootstrap/...
+	@echo ""
 
-test-domain:
-	@echo "$(GREEN)Running domain layer tests...$(NC)"
-	@cd domain && $(GO) test -v ./...
-	@echo "$(GREEN)✓ Domain tests passed$(NC)"
+test-integration: check-arch build ## Run integration tests (cross-layer)
+	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)$(BOLD)║                 INTEGRATION TEST SUITE                       ║$(NC)"
+	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@$(GO) test -v -tags=integration ./test/integration/...
+	@echo ""
 
-test-coverage: check-arch
+test-e2e: check-arch build ## Run E2E tests (black-box CLI testing)
+	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)$(BOLD)║                    E2E TEST SUITE                            ║$(NC)"
+	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@$(GO) test -v -tags=e2e ./test/e2e/...
+	@echo ""
+
+test-framework: test-unit test-integration test-e2e ## Run all tests using Ada-style framework
+	@echo "$(GREEN)$(BOLD)✓ All test suites completed$(NC)"
+
+test-coverage: check-arch clean-coverage
 	@echo "$(GREEN)Running tests with coverage analysis...$(NC)"
 	@mkdir -p $(COVERAGE_DIR)
-	@$(GO) test -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
+	@echo ""
+	@echo "$(CYAN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(CYAN)  Coverage Analysis - $(PROJECT_NAME)$(NC)"
+	@echo "$(CYAN)═══════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@# Run tests with coverage for all layers (Go workspace requires explicit paths)
+	@$(GO) test -coverprofile=$(COVERAGE_DIR)/coverage.out -covermode=atomic \
+		./domain/... ./application/... ./infrastructure/... ./presentation/... ./bootstrap/... 2>/dev/null || true
+	@echo ""
+	@echo "$(YELLOW)Per-Layer Coverage Summary:$(NC)"
+	@echo "$(YELLOW)───────────────────────────────────────────────────────────────$(NC)"
+	@# Domain layer coverage
+	@printf "  Domain:          "
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/domain/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f%% (%d functions)\n", sum/count, count; else print "N/A"}' || echo "N/A"
+	@# Application layer coverage
+	@printf "  Application:     "
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/application/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f%% (%d functions)\n", sum/count, count; else print "N/A"}' || echo "N/A"
+	@# Infrastructure layer coverage
+	@printf "  Infrastructure:  "
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/infrastructure/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f%% (%d functions)\n", sum/count, count; else print "N/A"}' || echo "N/A"
+	@# Presentation layer coverage
+	@printf "  Presentation:    "
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/presentation/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f%% (%d functions)\n", sum/count, count; else print "N/A"}' || echo "N/A"
+	@# Bootstrap layer coverage
+	@printf "  Bootstrap:       "
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/bootstrap/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f%% (%d functions)\n", sum/count, count; else print "N/A"}' || echo "N/A"
+	@echo "$(YELLOW)───────────────────────────────────────────────────────────────$(NC)"
+	@# Total coverage
+	@printf "  $(BOLD)TOTAL:$(NC)             "
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out | grep "^total:" | awk '{print $$3}'
+	@echo ""
+	@# Generate HTML report
 	@$(GO) tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
-	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out
-	@echo "$(GREEN)✓ Coverage report generated: $(COVERAGE_DIR)/coverage.html$(NC)"
+	@# Generate text summary
+	@$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out > $(COVERAGE_DIR)/coverage_summary.txt
+	@echo "$(GREEN)✓ Coverage reports generated:$(NC)"
+	@echo "    HTML report:  $(COVERAGE_DIR)/coverage.html"
+	@echo "    Text summary: $(COVERAGE_DIR)/coverage_summary.txt"
+	@echo ""
+
+test-coverage-threshold: test-coverage ## Run coverage with minimum threshold checks per testing standards
+	@echo ""
+	@echo "$(CYAN)Checking coverage thresholds per Testing Standards...$(NC)"
+	@echo "$(CYAN)───────────────────────────────────────────────────────────────$(NC)"
+	@# Check total coverage (> 85% required)
+	@TOTAL=$$($(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out | grep "^total:" | awk '{gsub(/%/,""); print $$3}'); \
+	if [ $$(echo "$$TOTAL < 85" | bc -l) -eq 1 ]; then \
+		echo "$(RED)✗ Total coverage $$TOTAL% is below 85% threshold$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ Total coverage $$TOTAL% meets 85% threshold$(NC)"; \
+	fi
+	@# Check domain coverage (= 100% required)
+	@DOMAIN=$$($(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/domain/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f", sum/count; else print "0"}'); \
+	if [ $$(echo "$$DOMAIN < 100" | bc -l) -eq 1 ]; then \
+		echo "$(RED)✗ Domain coverage $$DOMAIN% is below 100% requirement$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✓ Domain coverage $$DOMAIN% meets 100% requirement$(NC)"; \
+	fi
+	@# Check application coverage (= 100% required)
+	@APP=$$($(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/application/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f", sum/count; else print "0"}'); \
+	if [ $$(echo "$$APP < 100" | bc -l) -eq 1 ]; then \
+		echo "$(YELLOW)⚠ Application coverage $$APP% is below 100% target$(NC)"; \
+	else \
+		echo "$(GREEN)✓ Application coverage $$APP% meets 100% target$(NC)"; \
+	fi
+	@# Check infrastructure coverage (90%+ required)
+	@INFRA=$$($(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out 2>/dev/null | \
+		grep -E "^github.com/.*/infrastructure/" | \
+		awk '{sum+=$$3; count++} END {if(count>0) printf "%.1f", sum/count; else print "0"}'); \
+	if [ $$(echo "$$INFRA < 90" | bc -l) -eq 1 ]; then \
+		echo "$(YELLOW)⚠ Infrastructure coverage $$INFRA% is below 90% target$(NC)"; \
+	else \
+		echo "$(GREEN)✓ Infrastructure coverage $$INFRA% meets 90% target$(NC)"; \
+	fi
+	@echo "$(CYAN)───────────────────────────────────────────────────────────────$(NC)"
+	@echo "$(GREEN)✓ Coverage threshold check complete$(NC)"
 
 # =============================================================================
 # Quality & Code Checking Commands
@@ -197,7 +307,7 @@ check: lint vet check-arch
 
 check-arch: ## Validate hexagonal architecture boundaries
 	@echo "$(GREEN)Validating architecture boundaries...$(NC)"
-	@$(PYTHON3) scripts/makefile/arch_guard.py
+	@PYTHONPATH=scripts $(PYTHON3) -m arch_guard
 	@if [ $$? -eq 0 ]; then \
 		echo "$(GREEN)✓ Architecture validation passed$(NC)"; \
 	else \

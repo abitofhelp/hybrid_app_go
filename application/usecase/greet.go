@@ -28,6 +28,8 @@
 package usecase
 
 import (
+	"context"
+
 	"github.com/abitofhelp/hybrid_app_go/application/command"
 	"github.com/abitofhelp/hybrid_app_go/application/model"
 	"github.com/abitofhelp/hybrid_app_go/application/port/outward"
@@ -73,18 +75,21 @@ func NewGreetUseCase(writer outward.WriterFunc) *GreetUseCase {
 //  4. Write greeting to console via output port
 //  5. Propagate any errors up to caller
 //
-// Input: GreetCommand DTO crossing presentation -> application boundary
+// Parameters:
+//   - ctx: Context for cancellation and deadlines (passed to infrastructure)
+//   - cmd: GreetCommand DTO crossing presentation -> application boundary
 //
 // Error scenarios:
 //   - ValidationError: Invalid person name (empty, too long)
-//   - InfrastructureError: Console write failure (rare, but possible)
+//   - InfrastructureError: Console write failure or context cancellation
 //
 // Contract:
+//   - Pre: ctx is non-nil (use context.Background() if no cancellation needed)
 //   - Pre: cmd can be any GreetCommand (validation happens inside)
 //   - Post: Returns Ok(Unit) if greeting succeeded
 //   - Post: Returns Err(ValidationError) if name validation failed
-//   - Post: Returns Err(InfrastructureError) if write failed
-func (uc *GreetUseCase) Execute(cmd command.GreetCommand) domerr.Result[model.Unit] {
+//   - Post: Returns Err(InfrastructureError) if write failed or ctx cancelled
+func (uc *GreetUseCase) Execute(ctx context.Context, cmd command.GreetCommand) domerr.Result[model.Unit] {
 	// Step 1: Extract name from DTO
 	name := cmd.GetName()
 
@@ -105,7 +110,8 @@ func (uc *GreetUseCase) Execute(cmd command.GreetCommand) domerr.Result[model.Un
 	message := person.GreetingMessage()
 
 	// Step 4: Write to console via output port (injected dependency)
-	writeResult := uc.writer(message)
+	// Context is passed to infrastructure for cancellation support
+	writeResult := uc.writer(ctx, message)
 
 	// Step 5: Propagate result (success or failure) to caller
 	return writeResult

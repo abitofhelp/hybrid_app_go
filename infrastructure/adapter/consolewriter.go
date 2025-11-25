@@ -14,16 +14,32 @@
 //   - Converts exceptions/errors to Result types
 //   - Handles all technical/platform-specific details
 //
+// Design Pattern: Dependency Injection via io.Writer
+//   - NewWriter accepts any io.Writer for flexibility and testability
+//   - NewConsoleWriter is a convenience that uses os.Stdout
+//   - Tests can inject bytes.Buffer to capture output
+//   - Production can inject file writers, network writers, etc.
+//
 // Usage:
 //
 //	import "github.com/abitofhelp/hybrid_app_go/infrastructure/adapter"
 //
+//	// Production: write to console
 //	writer := adapter.NewConsoleWriter()
-//	result := writer("Hello, World!")
+//	result := writer(ctx, "Hello, World!")
+//
+//	// Testing: capture output
+//	var buf bytes.Buffer
+//	writer := adapter.NewWriter(&buf)
+//	result := writer(ctx, "Hello, World!")
+//	captured := buf.String()
 package adapter
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os"
 
 	apperr "github.com/abitofhelp/hybrid_app_go/application/error"
 	"github.com/abitofhelp/hybrid_app_go/application/model"
@@ -31,11 +47,12 @@ import (
 	domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
 )
 
-// NewConsoleWriter creates a WriterFunc that writes to standard output.
+// NewWriter creates a WriterFunc that writes to the provided io.Writer.
 //
-// This adapter implements the outward.WriterFunc port interface defined
-// by the application layer. It conforms to the interface without the
-// application knowing about this implementation.
+// This is the core adapter factory that demonstrates production-ready patterns:
+//   - Accepts any io.Writer for flexibility (files, network, buffers)
+//   - Enables testability by injecting test doubles (bytes.Buffer)
+//   - Properly maps all I/O errors to domain InfrastructureError
 //
 // Dependency Inversion:
 //   - Application defines the WriterFunc interface it NEEDS
@@ -43,41 +60,85 @@ import (
 //   - Bootstrap wires them together
 //   - Application never depends on Infrastructure
 //
+// Context Handling:
+//   - Checks ctx.Done() before performing I/O
+//   - Returns InfrastructureError if context is cancelled
+//   - Enables graceful shutdown and timeout support
+//
 // Error Handling:
-//   - Captures any panics and converts to Err
-//   - Maps I/O errors to InfrastructureError
+//   - Maps all io.Writer errors to InfrastructureError
+//   - Includes original error message for debugging
 //   - Always returns Result (never panics across boundary)
 //
-// Returns:
-//   - outward.WriterFunc that can be injected into use cases
-func NewConsoleWriter() outward.WriterFunc {
-	return func(message string) domerr.Result[model.Unit] {
-		// Perform the I/O operation
-		_, err := fmt.Println(message)
-		if err != nil {
-			// Convert I/O error to domain error
+// Example - Production:
+//
+//	writer := NewWriter(os.Stdout)
+//	result := writer(ctx, "Hello!")
+//
+// Example - Testing:
+//
+//	var buf bytes.Buffer
+//	writer := NewWriter(&buf)
+//	result := writer(ctx, "Hello!")
+//	assert.Equal(t, "Hello!\n", buf.String())
+//
+// Example - File Output:
+//
+//	file, _ := os.Create("output.txt")
+//	defer file.Close()
+//	writer := NewWriter(file)
+//	result := writer(ctx, "Hello!")
+func NewWriter(w io.Writer) outward.WriterFunc {
+	return func(ctx context.Context, message string) domerr.Result[model.Unit] {
+		// Check for context cancellation before I/O
+		// This is important for long-running operations or network writers
+		select {
+		case <-ctx.Done():
 			return domerr.Err[model.Unit](apperr.NewInfrastructureError(
-				fmt.Sprintf("Console write failed: %v", err)))
+				fmt.Sprintf("write cancelled: %v", ctx.Err())))
+		default:
+			// Context is still active, proceed with I/O
 		}
 
-		// Success case
+		// Perform the I/O operation using the injected writer
+		// fmt.Fprintln handles the newline and returns any write errors
+		_, err := fmt.Fprintln(w, message)
+		if err != nil {
+			// Map the I/O error to a domain InfrastructureError
+			// This keeps infrastructure concerns (specific error types)
+			// from leaking into application/domain layers
+			return domerr.Err[model.Unit](apperr.NewInfrastructureError(
+				fmt.Sprintf("write failed: %v", err)))
+		}
+
+		// Success case - return Unit to indicate completion
 		return domerr.Ok(model.UnitValue)
 	}
 }
 
-// Write is an alternative function-style adapter (not method-based).
+// NewConsoleWriter creates a WriterFunc that writes to standard output.
 //
-// This function directly implements the outward.WriterFunc signature and
-// can be used in places where function references are preferred.
+// This is a convenience function that wraps NewWriter with os.Stdout.
+// Use this for production CLI applications.
+//
+// For testing, use NewWriter with a bytes.Buffer instead to capture output.
 //
 // Usage:
 //
-//	useCase := NewGreetUseCase(adapter.Write)
-func Write(message string) domerr.Result[model.Unit] {
-	_, err := fmt.Println(message)
-	if err != nil {
-		return domerr.Err[model.Unit](apperr.NewInfrastructureError(
-			fmt.Sprintf("Console write failed: %v", err)))
-	}
-	return domerr.Ok(model.UnitValue)
+//	writer := adapter.NewConsoleWriter()
+//	result := writer(ctx, "Hello, World!")
+func NewConsoleWriter() outward.WriterFunc {
+	return NewWriter(os.Stdout)
+}
+
+// NewStderrWriter creates a WriterFunc that writes to standard error.
+//
+// Use this for error messages or diagnostic output that should go to stderr.
+//
+// Usage:
+//
+//	errWriter := adapter.NewStderrWriter()
+//	result := errWriter(ctx, "Error: something went wrong")
+func NewStderrWriter() outward.WriterFunc {
+	return NewWriter(os.Stderr)
 }

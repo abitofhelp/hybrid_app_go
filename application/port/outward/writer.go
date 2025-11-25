@@ -34,6 +34,8 @@
 package outward
 
 import (
+	"context"
+
 	"github.com/abitofhelp/hybrid_app_go/application/model"
 	domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
 )
@@ -44,13 +46,20 @@ import (
 //  1. Implement a function matching this signature
 //  2. Be injected into use cases that need write capabilities
 //
-// The function accepts a message string and returns domerr.Result[Unit]:
+// The function accepts a context and message string and returns domerr.Result[Unit]:
 //   - Ok(Unit) if write succeeded
 //   - Err(error) if write failed (with domain ErrorType)
 //
+// Context Usage:
+//   - ctx carries cancellation signals and deadlines from caller
+//   - Implementations SHOULD check ctx.Done() before expensive operations
+//   - For CLI apps, context.Background() is typically used
+//   - For HTTP handlers, request context flows through
+//
 // Contract:
+//   - ctx parameter carries cancellation and deadline signals
 //   - Message parameter can be any string (no length restrictions at this boundary)
 //   - Returns Ok(Unit) on success
-//   - Returns Err with InfrastructureError on I/O failure
+//   - Returns Err with InfrastructureError on I/O failure or context cancellation
 //   - Must not panic (convert panics to Err if needed)
-type WriterFunc func(message string) domerr.Result[model.Unit]
+type WriterFunc func(ctx context.Context, message string) domerr.Result[model.Unit]

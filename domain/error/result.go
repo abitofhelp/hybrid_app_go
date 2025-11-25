@@ -86,23 +86,63 @@ func (r Result[T]) IsError() bool {
 }
 
 // ============================================================================
-// Value extraction
+// Value extraction (UNSAFE - require precondition checks)
+// ============================================================================
+//
+// IMPORTANT: Value() and ErrorInfo() are "unsafe" accessors that panic if
+// called in the wrong state. This mirrors Rust's unwrap() behavior.
+//
+// Design Rationale:
+//   - Ada's discriminated records make invalid access impossible at compile time
+//   - Go lacks this, so we use runtime panics as the idiomatic alternative
+//   - These methods exist for ergonomics after precondition checks
+//
+// Safe Usage Patterns:
+//
+//	// Pattern 1: Check first (recommended)
+//	if result.IsOk() {
+//	    value := result.Value()  // Safe - precondition verified
+//	}
+//
+//	// Pattern 2: Use safe alternatives
+//	value := result.UnwrapOr(defaultValue)
+//	value := result.UnwrapOrElse(func() T { return computeDefault() })
+//
+//	// Pattern 3: Document assumption with Expect
+//	value := result.Expect("config validated at startup")
+//
+// When to Use Each:
+//   - Value()/ErrorInfo(): After IsOk()/IsError() check, or in tests
+//   - UnwrapOr(): When you have a sensible default value
+//   - UnwrapOrElse(): When default is expensive to compute
+//   - Expect(): When you can document WHY the precondition holds
+//
 // ============================================================================
 
 // Value returns the success value.
-// Panics if the Result is an error. Check IsOk() first.
+//
+// PRECONDITION: Result must be Ok. Caller must verify with IsOk() first.
+//
+// Panics if the Result is an error. This is intentional - it indicates
+// a programmer error (violated precondition), not a runtime failure.
+//
+// For safe alternatives, see: UnwrapOr, UnwrapOrElse, Expect.
 func (r Result[T]) Value() T {
 	if !r.isOk {
-		panic("called Value() on error Result")
+		panic("called Value() on error Result - precondition violated: must check IsOk() first")
 	}
 	return r.value
 }
 
 // ErrorInfo returns the error value.
-// Panics if the Result is Ok. Check IsError() first.
+//
+// PRECONDITION: Result must be Error. Caller must verify with IsError() first.
+//
+// Panics if the Result is Ok. This is intentional - it indicates
+// a programmer error (violated precondition), not a runtime failure.
 func (r Result[T]) ErrorInfo() ErrorType {
 	if r.isOk {
-		panic("called ErrorInfo() on ok Result")
+		panic("called ErrorInfo() on ok Result - precondition violated: must check IsError() first")
 	}
 	return r.err
 }

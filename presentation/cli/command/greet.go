@@ -33,6 +33,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -50,7 +51,12 @@ import (
 //   - Presentation defines what it needs (this function signature)
 //   - Application provides implementation (use case Execute method)
 //   - Bootstrap wires them together
-type GreetUseCaseFunc func(cmd command.GreetCommand) apperr.Result[model.Unit]
+//
+// Context Usage:
+//   - ctx carries cancellation signals from CLI (e.g., Ctrl+C handling)
+//   - For CLI apps, context.Background() is typically used
+//   - Enables future support for timeouts and graceful shutdown
+type GreetUseCaseFunc func(ctx context.Context, cmd command.GreetCommand) apperr.Result[model.Unit]
 
 // GreetCommand is a CLI command handler for the greet use case.
 //
@@ -87,7 +93,7 @@ func NewGreetCommand(useCase GreetUseCaseFunc) *GreetCommand {
 //  1. Parse command-line arguments
 //  2. Extract the name parameter
 //  3. Create GreetCommand DTO
-//  4. Call the use case with the DTO
+//  4. Call the use case with context and DTO
 //  5. Handle the result and display appropriate messages
 //  6. Return exit code (0 = success, non-zero = error)
 //
@@ -96,6 +102,7 @@ func NewGreetCommand(useCase GreetUseCaseFunc) *GreetCommand {
 //
 // This is where presentation concerns live:
 //   - CLI argument parsing
+//   - Context creation (for cancellation support)
 //   - User-facing error messages
 //   - Exit code mapping
 //
@@ -119,10 +126,15 @@ func (c *GreetCommand) Run(args []string) int {
 	// Create DTO for crossing presentation -> application boundary
 	cmd := command.NewGreetCommand(name)
 
+	// Create context for the request
+	// For CLI apps, we use Background context. Future enhancement could
+	// add signal handling for graceful shutdown on Ctrl+C.
+	ctx := context.Background()
+
 	// Call the use case (injected via constructor)
 	// This is the key architectural boundary:
 	// Presentation -> Application (through input port)
-	result := c.useCase(cmd)
+	result := c.useCase(ctx, cmd)
 
 	// Handle the result from the use case
 	if result.IsOk() {

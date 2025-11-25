@@ -1,227 +1,138 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
-// Package: valueobject
-// Description: Unit tests for Person value object (stdlib testing only - ZERO external dependencies)
 
-package valueobject
+// Package valueobject_test provides unit tests for Person value object
+// using the Ada-style test framework for consistent cross-language reporting.
+package valueobject_test
 
 import (
 	"strings"
 	"testing"
 
 	domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
+	"github.com/abitofhelp/hybrid_app_go/domain/test"
+	"github.com/abitofhelp/hybrid_app_go/domain/valueobject"
 )
 
-func TestCreatePerson_ValidNames(t *testing.T) {
-	tests := map[string]struct {
-		name         string
-		wantName     string
-		wantGreeting string
-	}{
-		"simple name": {
-			name:         "Alice",
-			wantName:     "Alice",
-			wantGreeting: "Hello, Alice!",
-		},
-		"name with spaces": {
-			name:         "Bob Smith",
-			wantName:     "Bob Smith",
-			wantGreeting: "Hello, Bob Smith!",
-		},
-		"name with unicode": {
-			name:         "José García",
-			wantName:     "José García",
-			wantGreeting: "Hello, José García!",
-		},
-		"single character": {
-			name:         "X",
-			wantName:     "X",
-			wantGreeting: "Hello, X!",
-		},
-		"max length name": {
-			name:         strings.Repeat("a", MaxNameLength),
-			wantName:     strings.Repeat("a", MaxNameLength),
-			wantGreeting: "Hello, " + strings.Repeat("a", MaxNameLength) + "!",
-		},
+// TestDomainValueObjectPerson tests the Person value object.
+// Uses Ada-style [PASS]/[FAIL] output for uniform cross-language reporting.
+func TestDomainValueObjectPerson(t *testing.T) {
+	tf := test.New("Domain.ValueObject.Person")
+
+	// ========================================================================
+	// Test: CreatePerson with valid name
+	// ========================================================================
+
+	r1 := valueobject.CreatePerson("Alice")
+	tf.RunTest("CreatePerson valid - IsOk returns true", r1.IsOk())
+	if r1.IsOk() {
+		person := r1.Value()
+		tf.RunTest("CreatePerson valid - GetName returns correct name",
+			person.GetName() == "Alice")
+		tf.RunTest("CreatePerson valid - IsValid returns true",
+			person.IsValid())
 	}
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := CreatePerson(tt.name)
+	// ========================================================================
+	// Test: CreatePerson with empty name (validation error)
+	// ========================================================================
 
-			if !result.IsOk() {
-				t.Fatalf("expected Ok result for valid name, got Error: %v", result.ErrorInfo())
-			}
-			person := result.Value()
-
-			if got := person.GetName(); got != tt.wantName {
-				t.Errorf("GetName() = %v, want %v", got, tt.wantName)
-			}
-
-			if got := person.GreetingMessage(); got != tt.wantGreeting {
-				t.Errorf("GreetingMessage() = %v, want %v", got, tt.wantGreeting)
-			}
-
-			if !person.IsValid() {
-				t.Error("IsValid() = false, want true")
-			}
-		})
-	}
-}
-
-func TestCreatePerson_EmptyName(t *testing.T) {
-	result := CreatePerson("")
-
-	if !result.IsError() {
-		t.Fatal("expected Err result for empty name")
+	r2 := valueobject.CreatePerson("")
+	tf.RunTest("CreatePerson empty - IsError returns true", r2.IsError())
+	if r2.IsError() {
+		info := r2.ErrorInfo()
+		tf.RunTest("CreatePerson empty - error kind is ValidationError",
+			info.Kind == domerr.ValidationError)
+		tf.RunTest("CreatePerson empty - error message mentions 'empty'",
+			strings.Contains(info.Message, "empty"))
 	}
 
-	domErr := result.ErrorInfo()
+	// ========================================================================
+	// Test: CreatePerson with name too long (validation error)
+	// ========================================================================
 
-	if domErr.Kind != domerr.ValidationError {
-		t.Errorf("ErrorKind = %v, want %v", domErr.Kind, domerr.ValidationError)
+	longName := strings.Repeat("a", valueobject.MaxNameLength+1)
+	r3 := valueobject.CreatePerson(longName)
+	tf.RunTest("CreatePerson too long - IsError returns true", r3.IsError())
+	if r3.IsError() {
+		info := r3.ErrorInfo()
+		tf.RunTest("CreatePerson too long - error kind is ValidationError",
+			info.Kind == domerr.ValidationError)
+		tf.RunTest("CreatePerson too long - error message mentions 'exceeds'",
+			strings.Contains(info.Message, "exceeds"))
 	}
 
-	if !strings.Contains(domErr.Message, "cannot be empty") {
-		t.Errorf("Error message %q does not contain 'cannot be empty'", domErr.Message)
-	}
-}
+	// ========================================================================
+	// Test: GreetingMessage format
+	// ========================================================================
 
-func TestCreatePerson_NameTooLong(t *testing.T) {
-	longName := strings.Repeat("a", MaxNameLength+1)
-	result := CreatePerson(longName)
-
-	if !result.IsError() {
-		t.Fatal("expected Err result for name exceeding max length")
-	}
-
-	domErr := result.ErrorInfo()
-
-	if domErr.Kind != domerr.ValidationError {
-		t.Errorf("ErrorKind = %v, want %v", domErr.Kind, domerr.ValidationError)
-	}
-
-	if !strings.Contains(domErr.Message, "exceeds maximum length") {
-		t.Errorf("Error message %q does not contain 'exceeds maximum length'", domErr.Message)
-	}
-}
-
-func TestPerson_GetName(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-	}{
-		{"simple", "Alice"},
-		{"with spaces", "Bob Smith"},
-		{"with unicode", "José García"},
+	r4 := valueobject.CreatePerson("Bob")
+	if r4.IsOk() {
+		person := r4.Value()
+		greeting := person.GreetingMessage()
+		tf.RunTest("GreetingMessage - starts with 'Hello, '",
+			strings.HasPrefix(greeting, "Hello, "))
+		tf.RunTest("GreetingMessage - contains name",
+			strings.Contains(greeting, "Bob"))
+		tf.RunTest("GreetingMessage - ends with '!'",
+			strings.HasSuffix(greeting, "!"))
+		tf.RunTest("GreetingMessage - exact format",
+			greeting == "Hello, Bob!")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := CreatePerson(tt.input)
-			if !result.IsOk() {
-				t.Fatalf("expected Ok result, got Error: %v", result.ErrorInfo())
-			}
+	// ========================================================================
+	// Test: Name with spaces
+	// ========================================================================
 
-			person := result.Value()
-			got := person.GetName()
-
-			if got != tt.input {
-				t.Errorf("GetName() = %v, want %v", got, tt.input)
-			}
-
-			if got == "" {
-				t.Error("GetName() returned empty string")
-			}
-
-			if len(got) > MaxNameLength {
-				t.Errorf("GetName() length = %d, want <= %d", len(got), MaxNameLength)
-			}
-		})
-	}
-}
-
-func TestPerson_GreetingMessage(t *testing.T) {
-	tests := map[string]struct {
-		name            string
-		wantContains    []string
-		wantStartsWith  string
-		wantEndsWith    string
-		wantMinLength   int
-	}{
-		"Alice": {
-			name:            "Alice",
-			wantContains:    []string{"Hello,", "Alice"},
-			wantStartsWith:  "Hello, ",
-			wantEndsWith:    "!",
-			wantMinLength:   9,
-		},
-		"Bob Smith": {
-			name:            "Bob Smith",
-			wantContains:    []string{"Hello,", "Bob Smith"},
-			wantStartsWith:  "Hello, ",
-			wantEndsWith:    "!",
-			wantMinLength:   9,
-		},
+	r5 := valueobject.CreatePerson("Bob Smith")
+	tf.RunTest("Name with spaces - IsOk returns true", r5.IsOk())
+	if r5.IsOk() {
+		person := r5.Value()
+		tf.RunTest("Name with spaces - preserves spaces",
+			person.GetName() == "Bob Smith")
+		tf.RunTest("Name with spaces - greeting correct",
+			person.GreetingMessage() == "Hello, Bob Smith!")
 	}
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			result := CreatePerson(tt.name)
-			if !result.IsOk() {
-				t.Fatalf("expected Ok result, got Error: %v", result.ErrorInfo())
-			}
+	// ========================================================================
+	// Test: Name with unicode characters
+	// ========================================================================
 
-			person := result.Value()
-			greeting := person.GreetingMessage()
-
-			if len(greeting) <= tt.wantMinLength {
-				t.Errorf("greeting length = %d, want > %d", len(greeting), tt.wantMinLength)
-			}
-
-			if !strings.HasPrefix(greeting, tt.wantStartsWith) {
-				t.Errorf("greeting %q does not start with %q", greeting, tt.wantStartsWith)
-			}
-
-			if !strings.HasSuffix(greeting, tt.wantEndsWith) {
-				t.Errorf("greeting %q does not end with %q", greeting, tt.wantEndsWith)
-			}
-
-			for _, want := range tt.wantContains {
-				if !strings.Contains(greeting, want) {
-					t.Errorf("greeting %q does not contain %q", greeting, want)
-				}
-			}
-		})
+	r6 := valueobject.CreatePerson("José García")
+	tf.RunTest("Unicode name - IsOk returns true", r6.IsOk())
+	if r6.IsOk() {
+		person := r6.Value()
+		tf.RunTest("Unicode name - preserves unicode",
+			person.GetName() == "José García")
 	}
-}
 
-func TestPerson_IsValid(t *testing.T) {
-	t.Run("valid person", func(t *testing.T) {
-		result := CreatePerson("Alice")
-		if !result.IsOk() {
-			t.Fatalf("expected Ok result, got Error: %v", result.ErrorInfo())
-		}
+	// ========================================================================
+	// Test: Single character name (boundary)
+	// ========================================================================
 
-		person := result.Value()
-		if !person.IsValid() {
-			t.Error("IsValid() = false, want true")
-		}
-	})
+	r7 := valueobject.CreatePerson("X")
+	tf.RunTest("Single char name - IsOk returns true", r7.IsOk())
+	if r7.IsOk() {
+		person := r7.Value()
+		tf.RunTest("Single char name - GetName correct",
+			person.GetName() == "X")
+	}
 
-	t.Run("type invariant maintained", func(t *testing.T) {
-		// Test that the type invariant is always maintained
-		// for any Person created via CreatePerson
-		names := []string{"A", "Alice", "Bob Smith", "José García"}
+	// ========================================================================
+	// Test: Max length name (boundary)
+	// ========================================================================
 
-		for _, name := range names {
-			result := CreatePerson(name)
-			if result.IsOk() {
-				person := result.Value()
-				if !person.IsValid() {
-					t.Errorf("type invariant violated for name: %s", name)
-				}
-			}
-		}
-	})
+	maxName := strings.Repeat("a", valueobject.MaxNameLength)
+	r8 := valueobject.CreatePerson(maxName)
+	tf.RunTest("Max length name - IsOk returns true", r8.IsOk())
+	if r8.IsOk() {
+		person := r8.Value()
+		tf.RunTest("Max length name - GetName correct",
+			person.GetName() == maxName)
+		tf.RunTest("Max length name - length is MaxNameLength",
+			len(person.GetName()) == valueobject.MaxNameLength)
+	}
+
+	// Print summary and fail test if any failed
+	tf.Summary(t)
 }

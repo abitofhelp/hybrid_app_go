@@ -7,7 +7,7 @@
 
 ## Overview
 
-A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal architecture** with **strict module boundaries** enforced via Go workspaces and **functional programming** principles using the `samber/mo` library for Result monads.
+A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal architecture** with **strict module boundaries** enforced via Go workspaces and **functional programming** principles using custom **domain-level Result/Option monads** (ZERO external dependencies in domain layer).
 
 This is a **desktop/enterprise application template** showcasing:
 - **5-Layer Hexagonal Architecture** (Domain, Application, Infrastructure, Presentation, Bootstrap)
@@ -26,8 +26,8 @@ This is a **desktop/enterprise application template** showcasing:
 ```
 hybrid_app_go/
 ├── go.work                          # Workspace definition (manages all modules)
-├── domain/                          # Module: Pure business logic (ZERO dependencies)
-│   └── go.mod                       # Depends only on samber/mo
+├── domain/                          # Module: Pure business logic (ZERO external dependencies)
+│   └── go.mod                       # ZERO external dependencies - custom Result/Option types
 ├── application/                     # Module: Use cases and ports
 │   └── go.mod                       # Depends ONLY on domain
 ├── infrastructure/                  # Module: Driven adapters
@@ -61,7 +61,12 @@ hybrid_app_go/
 
 **Go (Function Injection)**:
 ```go
-type WriterFunc func(message string) mo.Result[Unit]
+import (
+    domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
+    "github.com/abitofhelp/hybrid_app_go/application/model"
+)
+
+type WriterFunc func(message string) domerr.Result[model.Unit]
 
 type GreetUseCase struct {
     writer WriterFunc
@@ -71,7 +76,7 @@ func NewGreetUseCase(writer WriterFunc) *GreetUseCase {
     return &GreetUseCase{writer: writer}
 }
 
-func (uc *GreetUseCase) Execute(cmd GreetCommand) mo.Result[Unit] {
+func (uc *GreetUseCase) Execute(cmd GreetCommand) domerr.Result[model.Unit] {
     // Use uc.writer(message)
 }
 ```
@@ -99,21 +104,25 @@ return greetCommand.Run(os.Args)
 
 ## Error Handling: Railway-Oriented Programming
 
-**NO PANICS across layer boundaries.** All errors propagate via mo.Result monad:
+**NO PANICS across layer boundaries.** All errors propagate via domain Result monad:
 
 ```go
-// Domain defines Result[T] monad using samber/mo
-import "github.com/samber/mo"
+// Domain defines custom Result[T] monad (ZERO external dependencies)
+import (
+    domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
+    "github.com/abitofhelp/hybrid_app_go/application/model"
+    "github.com/abitofhelp/hybrid_app_go/domain/valueobject"
+)
 
 // Usage Pattern
-func Execute(cmd GreetCommand) mo.Result[Unit] {
+func Execute(cmd GreetCommand) domerr.Result[model.Unit] {
     personResult := valueobject.CreatePerson(cmd.Name)
-    
+
     if personResult.IsError() {
-        return mo.Err[Unit](personResult.Error())
+        return domerr.Err[model.Unit](personResult.ErrorInfo())
     }
-    
-    person := personResult.MustGet()
+
+    person := personResult.Value()
     return writer(person.GreetingMessage())
 }
 ```
@@ -121,7 +130,7 @@ func Execute(cmd GreetCommand) mo.Result[Unit] {
 **Error Flow:**
 1. **Domain:** Validates, returns `Err` variant if invalid
 2. **Application:** Orchestrates, propagates errors upward
-3. **Infrastructure:** Catches panics at boundaries, converts to `Err` with `mo.Try`
+3. **Infrastructure:** Catches panics at boundaries, converts to `Err` via recovery pattern
 4. **Presentation:** Pattern matches on `ErrorKind`, displays user-friendly messages
 
 ## Building
@@ -206,15 +215,16 @@ make test-unit
 Managed by Go modules (`go.mod` per module):
 
 ```
-samber/mo v1.13.0  # Result/Option/Either monads
-testify v1.11.1    # Testing assertions
+testify v1.11.1    # Testing assertions (test module only, NOT domain)
 ```
+
+**Note:** Domain layer has ZERO external dependencies. Custom Result/Option monads are implemented in `domain/error/result.go` and `domain/valueobject/option.go`.
 
 ## Module Boundaries
 
 **Enforced by go.mod dependencies:**
 
-- **domain**: NO dependencies (except mo)
+- **domain**: ZERO external dependencies (custom Result/Option types)
 - **application**: domain ONLY
 - **infrastructure**: application + domain
 - **presentation**: application ONLY (NOT domain)
@@ -259,8 +269,8 @@ func main() {
 ### 5. Go 1.23 Features
 
 - **Workspaces** (`go.work` for multi-module projects)
-- **Generics** (via samber/mo for Result[T], Option[T])
-- **Type parameters** (used in mo library)
+- **Generics** (custom domain Result[T], Option[T] types)
+- **Type parameters** (used in domain monads)
 
 ## Workspace Management
 
@@ -287,17 +297,17 @@ This project follows:
 ### Key Standards Applied
 
 1. **SPDX Headers:** All `.go` files have SPDX license headers
-2. **Result Monads:** All fallible operations return `mo.Result[T]`
-3. **No Panics:** Errors are values, not thrown (mo.Try for panic conversion)
+2. **Result Monads:** All fallible operations return `domerr.Result[T]`
+3. **No Panics:** Errors are values, not thrown (recovery patterns for panic conversion)
 4. **Module Boundaries:** Compiler-enforced via go.mod
 5. **Function Injection:** Lightweight dependency injection
-6. **Table-Driven Tests:** Using testify assertions
+6. **Table-Driven Tests:** Using testify assertions (test module, NOT domain)
 
 ## Comparison with Ada Version
 
 | Aspect                  | Ada (Original)              | Go (This Port)                     |
 |-------------------------|-----------------------------|------------------------------------|
-| **Error Handling**      | Domain.Error.Result monad   | mo.Result[T] monad                 |
+| **Error Handling**      | Domain.Error.Result monad   | domain/error Result[T] monad       |
 | **Dependency Injection**| Generic instantiation       | Function injection                 |
 | **String Handling**     | Bounded strings             | Regular strings (GC handles it)    |
 | **Memory Model**        | Stack allocation            | Stack + GC                         |
@@ -309,7 +319,7 @@ This project follows:
 
 ✅ **Completed:**
 - Multi-module workspace structure with go.work
-- Result monad error handling (mo.Result[T])
+- Custom domain Result/Option monads (ZERO external dependencies)
 - Function injection dependency injection
 - Application.Error re-export pattern
 - Module boundary enforcement via go.mod
@@ -320,7 +330,6 @@ This project follows:
 ## Learning Resources
 
 - [Go Workspaces](https://go.dev/doc/tutorial/workspaces)
-- [samber/mo Library](https://github.com/samber/mo)
 - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
 - [Railway-Oriented Programming](https://fsharpforfunandprofit.com/rop/)
 
