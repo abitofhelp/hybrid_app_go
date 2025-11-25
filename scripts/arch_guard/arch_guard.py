@@ -12,7 +12,7 @@
 #   inversion.
 #
 # Usage:
-#   python3 scripts/arch_guard/arch_guard.py [--language go|ada|rust]
+#   python3 -m scripts.arch_guard [--language go|ada|rust]
 #   make check-arch  # via Makefile
 #
 #   Exit Codes:

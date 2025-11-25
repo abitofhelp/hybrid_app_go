@@ -600,6 +600,12 @@ def test_go_adapter_instantiation():
 @pytest.mark.smoke
 def test_architecture_guard_with_real_project(project_root):
     """Verify ArchitectureGuard works on real project."""
+    from arch_guard.arch_guard import detect_language
+
+    detected = detect_language(project_root)
+    if detected != "go":
+        pytest.skip(f"Skipping Go smoke test: detected language is '{detected}'")
+
     adapter = GoAdapter()
     guard = ArchitectureGuard(project_root, adapter)
 
