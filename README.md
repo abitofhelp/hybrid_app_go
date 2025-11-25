@@ -62,11 +62,12 @@ hybrid_app_go/
 **Go (Function Injection)**:
 ```go
 import (
+    "context"
     domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
     "github.com/abitofhelp/hybrid_app_go/application/model"
 )
 
-type WriterFunc func(message string) domerr.Result[model.Unit]
+type WriterFunc func(ctx context.Context, message string) domerr.Result[model.Unit]
 
 type GreetUseCase struct {
     writer WriterFunc
@@ -76,8 +77,8 @@ func NewGreetUseCase(writer WriterFunc) *GreetUseCase {
     return &GreetUseCase{writer: writer}
 }
 
-func (uc *GreetUseCase) Execute(cmd GreetCommand) domerr.Result[model.Unit] {
-    // Use uc.writer(message)
+func (uc *GreetUseCase) Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit] {
+    // Use uc.writer(ctx, message)
 }
 ```
 
@@ -262,11 +263,72 @@ func main() {
 
 ### 4. Function Injection
 
-**Pattern:** Functions passed as dependencies  
-**Wiring:** Bootstrap injects all functions  
+**Pattern:** Functions passed as dependencies
+**Wiring:** Bootstrap injects all functions
 **Benefit:** Compile-time resolution (zero runtime cost)
 
-### 5. Go 1.23 Features
+### 5. Concurrency-Ready Pattern
+
+This starter is **concurrency-ready** without implementing actual goroutines. The patterns are in place for when you need them:
+
+**Context Propagation:**
+```go
+// Use case accepts context for cancellation/timeout
+func (uc *GreetUseCase) Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit]
+
+// Infrastructure checks context before I/O
+select {
+case <-ctx.Done():
+    return domerr.Err[model.Unit](apperr.NewInfrastructureError(
+        fmt.Sprintf("write cancelled: %v", ctx.Err())))
+default:
+    // proceed with operation
+}
+```
+
+**Panic Recovery at Boundaries:**
+```go
+// Infrastructure adapters recover panics and convert to Result errors
+func NewWriter(w io.Writer) outward.WriterFunc {
+    return func(ctx context.Context, message string) (result domerr.Result[model.Unit]) {
+        defer func() {
+            if r := recover(); r != nil {
+                result = domerr.Err[model.Unit](apperr.NewInfrastructureError(
+                    fmt.Sprintf("write panicked: %v", r)))
+            }
+        }()
+        // ... perform I/O
+    }
+}
+```
+
+**When You Add Goroutines:**
+- Pass `ctx` to all goroutines for cancellation signaling
+- Use `ctx.Done()` channel in `select` statements
+- Map `ctx.Err()` to `InfrastructureError` at boundaries
+- No "spawn-and-forget" goroutines (always handle lifecycle)
+- Use channels or `sync.WaitGroup` for coordination
+
+**Example Extension (not in starter):**
+```go
+// Background monitor pattern (add when needed)
+func StartMonitor(ctx context.Context, events chan<- Event) {
+    go func() {
+        ticker := time.NewTicker(5 * time.Second)
+        defer ticker.Stop()
+        for {
+            select {
+            case <-ctx.Done():
+                return // graceful shutdown
+            case <-ticker.C:
+                events <- checkHealth()
+            }
+        }
+    }()
+}
+```
+
+### 6. Go 1.23 Features
 
 - **Workspaces** (`go.work` for multi-module projects)
 - **Generics** (custom domain Result[T], Option[T] types)
@@ -326,6 +388,9 @@ This project follows:
 - Comprehensive Makefile automation
 - All layers ported from Ada to Go
 - Functioning CLI application
+- Context propagation for cancellation/timeout support
+- Panic recovery at infrastructure boundaries
+- Concurrency-ready patterns (documented, ready for extension)
 
 ## Learning Resources
 

@@ -66,6 +66,7 @@ import (
 //   - Enables graceful shutdown and timeout support
 //
 // Error Handling:
+//   - Recovers from panics and converts to InfrastructureError
 //   - Maps all io.Writer errors to InfrastructureError
 //   - Includes original error message for debugging
 //   - Always returns Result (never panics across boundary)
@@ -89,7 +90,18 @@ import (
 //	writer := NewWriter(file)
 //	result := writer(ctx, "Hello!")
 func NewWriter(w io.Writer) outward.WriterFunc {
-	return func(ctx context.Context, message string) domerr.Result[model.Unit] {
+	return func(ctx context.Context, message string) (result domerr.Result[model.Unit]) {
+		// Recover from any panics and convert to InfrastructureError
+		// This ensures NO panics escape across the infrastructure boundary
+		// Pattern: Infrastructure adapters are the "exception boundary" where
+		// all panics/exceptions must be caught and converted to Result errors
+		defer func() {
+			if r := recover(); r != nil {
+				result = domerr.Err[model.Unit](apperr.NewInfrastructureError(
+					fmt.Sprintf("write panicked: %v", r)))
+			}
+		}()
+
 		// Check for context cancellation before I/O
 		// This is important for long-running operations or network writers
 		select {

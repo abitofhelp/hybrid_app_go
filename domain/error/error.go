@@ -8,7 +8,7 @@
 // that enable railway-oriented programming via Result monads.
 //
 // Architecture Notes:
-//   - Part of the DOMAIN layer (innermost, zero external dependencies except mo)
+//   - Part of the DOMAIN layer (innermost, zero external dependencies (stdlib only)
 //   - Error types are concrete (not generic) for consistency
 //   - Used with mo.Result[T] monad for functional error handling
 //
