@@ -37,7 +37,7 @@ package "Application Layer" as Application #E8F5E9 {
 }
 
 package "Presentation Layer" as Presentation #FFE4E1 {
-  class "presentation/cli/command" as GreetCmd {
+  class "presentation/adapter/cli/command" as GreetCmd {
     + Run() : int
     --
     Uses **application/error**

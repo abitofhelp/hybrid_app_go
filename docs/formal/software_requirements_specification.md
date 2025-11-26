@@ -477,7 +477,7 @@ Infrastructure ----+
 | FR-01 | domain/valueobject/person.go | 42 unit tests | Pass |
 | FR-02 | application/usecase/greet.go | Integration | Pass |
 | FR-03 | infrastructure/adapter/consolewriter.go | Integration | Pass |
-| FR-04 | presentation/cli/command/greet.go | 23 integration | Pass |
+| FR-04 | presentation/adapter/cli/command/greet.go | 23 integration | Pass |
 | FR-05 | bootstrap/cli/cli.go | Integration | Pass |
 | FR-06 | domain/error/result.go | All tests | Pass |
 | FR-07 | Generic instantiation | Compile-time | Verified |

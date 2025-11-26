@@ -23,7 +23,7 @@ frame "Bootstrap Layer" #FFEBCD {
 }
 
 frame "Presentation Layer" #FFE4E1 {
-  component "presentation/cli/command" as PresentationGreet
+  component "presentation/adapter/cli/command" as PresentationGreet
   note right of PresentationGreet
     **Depends on:**
     - application/command

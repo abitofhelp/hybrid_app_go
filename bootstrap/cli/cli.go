@@ -44,7 +44,7 @@ package cli
 import (
 	"github.com/abitofhelp/hybrid_app_go/application/usecase"
 	"github.com/abitofhelp/hybrid_app_go/infrastructure/adapter"
-	"github.com/abitofhelp/hybrid_app_go/presentation/cli/command"
+	"github.com/abitofhelp/hybrid_app_go/presentation/adapter/cli/command"
 )
 
 // Run is the composition root that wires all dependencies and executes the application.

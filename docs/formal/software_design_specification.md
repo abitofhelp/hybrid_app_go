@@ -128,7 +128,7 @@ Hybrid_App_Go uses **Hexagonal Architecture** (Ports and Adapters / Clean Archit
 #### Presentation Layer
 - **Purpose**: User interface implementation
 - **Components**:
-  - CLI Commands: `presentation/cli/command/greet.go`
+  - CLI Commands: `presentation/adapter/cli/command/greet.go`
   - Argument parsing
   - Error formatting
 - **Rules**:
@@ -342,7 +342,7 @@ func (cw *ConsoleWriter) Write(ctx context.Context, message string) (result dome
 
 ### 3.4 Presentation Layer Design
 
-**presentation/cli/command/greet.go** (Generic):
+**presentation/adapter/cli/command/greet.go** (Generic):
 ```go
 // GreetCommand is generic over GreetPort for static dispatch
 type GreetCommand[UC inbound.GreetPort] struct {

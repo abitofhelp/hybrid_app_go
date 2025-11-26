@@ -38,7 +38,7 @@
 //
 // Usage:
 //
-//	import "github.com/abitofhelp/hybrid_app_go/presentation/cli/command"
+//	import "github.com/abitofhelp/hybrid_app_go/presentation/adapter/cli/command"
 //
 //	// Bootstrap instantiates with concrete type
 //	uc := usecase.NewGreetUseCase[*adapter.ConsoleWriter](writer)
