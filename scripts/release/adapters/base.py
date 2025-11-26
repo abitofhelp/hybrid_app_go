@@ -486,6 +486,136 @@ class BaseReleaseAdapter(ABC):
         print(f"  Generated {len(puml_files)} diagram(s)")
         return True
 
+    def validate_links(self, config) -> bool:
+        """
+        Validate links in documentation files.
+
+        Checks:
+        - External URLs (HTTP status)
+        - Internal file references
+        - Anchor links in markdown
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if all links are valid
+        """
+        import urllib.request
+        import urllib.error
+
+        print("Validating documentation links...")
+        errors = []
+
+        # Collect all markdown files
+        md_files = list(config.project_root.glob("*.md"))
+        md_files.extend(config.project_root.glob("docs/**/*.md"))
+
+        # Extract and validate URLs
+        external_urls = set()
+        for md_file in md_files:
+            try:
+                content = md_file.read_text(encoding='utf-8')
+
+                # Extract external URLs
+                url_matches = re.findall(r'https?://[^\s\)\]"\'<>]+', content)
+                for url in url_matches:
+                    # Clean trailing punctuation
+                    url = url.rstrip('.,;:')
+                    # Skip SVG namespace URLs
+                    if 'w3.org' in url:
+                        continue
+                    external_urls.add(url)
+
+                # Check internal file references like [text](./path/file.md)
+                internal_refs = re.findall(r'\]\((\./[^)#]+)\)', content)
+                for ref in internal_refs:
+                    ref_path = md_file.parent / ref
+                    if not ref_path.exists():
+                        errors.append(f"  ✗ {md_file.name}: broken reference '{ref}'")
+
+                # Check anchor links like [text](#section-name)
+                anchor_refs = re.findall(r'\]\((#[^)]+)\)', content)
+                for anchor in anchor_refs:
+                    # Convert anchor to expected heading format
+                    expected_heading = anchor[1:].replace('-', ' ').lower()
+                    # Extract all headings from the file
+                    headings = re.findall(r'^#+\s+(.+)$', content, re.MULTILINE)
+                    heading_slugs = [h.lower().replace(' ', '-').replace('/', '').replace('(', '').replace(')', '') for h in headings]
+                    anchor_slug = anchor[1:].lower()
+                    if anchor_slug not in heading_slugs:
+                        # Be lenient - just warn, don't fail
+                        print(f"  ⚠ {md_file.name}: anchor '{anchor}' may not exist")
+
+            except Exception as e:
+                print(f"  ⚠ Error reading {md_file}: {e}")
+
+        # Validate external URLs (sample check - don't hammer servers)
+        checked = 0
+        max_checks = 10  # Limit external checks
+
+        # Get project URL to skip self-references (won't exist until published)
+        project_url = getattr(config, 'project_url', '') or ''
+
+        for url in sorted(external_urls):
+            if checked >= max_checks:
+                remaining = len(external_urls) - checked
+                print(f"  ... skipping {remaining} more URLs")
+                break
+
+            # Skip self-referencing URLs (project's own repo)
+            if project_url and url.startswith(project_url):
+                print(f"  ⊘ {url[:60]}... (self-reference, skipped)")
+                continue
+
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={'User-Agent': 'Mozilla/5.0 (link validator)'},
+                    method='HEAD'
+                )
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    if response.status < 400:
+                        print(f"  ✓ {url[:60]}...")
+                    else:
+                        errors.append(f"  ✗ {url} (HTTP {response.status})")
+            except urllib.error.HTTPError as e:
+                if e.code == 405:  # Method not allowed - try GET
+                    try:
+                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                        with urllib.request.urlopen(req, timeout=10) as response:
+                            print(f"  ✓ {url[:60]}...")
+                    except Exception:
+                        errors.append(f"  ✗ {url} (HTTP {e.code})")
+                else:
+                    errors.append(f"  ✗ {url} (HTTP {e.code})")
+            except Exception as e:
+                errors.append(f"  ✗ {url} ({type(e).__name__})")
+
+            checked += 1
+
+        # Check diagram files exist
+        diagrams_dir = config.project_root / "docs" / "diagrams"
+        if diagrams_dir.exists():
+            puml_files = list(diagrams_dir.glob("*.puml"))
+            svg_files = list(diagrams_dir.glob("*.svg"))
+
+            for puml in puml_files:
+                svg_path = puml.with_suffix('.svg')
+                if svg_path not in svg_files:
+                    errors.append(f"  ✗ Missing SVG for {puml.name}")
+                else:
+                    print(f"  ✓ {puml.name} → {svg_path.name}")
+
+        if errors:
+            print("\nLink validation errors:")
+            for error in errors:
+                print(error)
+            return False
+
+        print("  All links validated successfully")
+        return True
+
     def verify_clean_working_tree(self, config) -> bool:
         """Verify git working tree is clean."""
         result = self.run_command(

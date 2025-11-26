@@ -260,10 +260,16 @@ def prepare_release(config, adapter) -> bool:
     print_section(f"PREPARING RELEASE {config.version} ({adapter.name})")
     print_section(f"{'='*70}\n")
 
-    # Step 0: Validate Makefile targets
-    print_info("\nStep 0: Validating Makefile targets...")
+    # Step 0a: Validate Makefile targets
+    print_info("\nStep 0a: Validating Makefile targets...")
     if not adapter.validate_makefile(config):
         print_error("Makefile validation failed - fix targets before release")
+        return False
+
+    # Step 0b: Validate documentation links
+    print_info("\nStep 0b: Validating documentation links...")
+    if not adapter.validate_links(config):
+        print_error("Link validation failed - fix broken links before release")
         return False
 
     # Step 1: Clean up temporary files

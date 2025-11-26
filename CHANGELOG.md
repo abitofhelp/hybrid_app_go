@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-11-25
+## [1.0.0] - 2025-11-26
 
 _First stable release - Professional Go 1.23+ application starter template demonstrating hybrid DDD/Clean/Hexagonal architecture with functional programming principles._
 
@@ -96,6 +96,11 @@ _First stable release - Professional Go 1.23+ application starter template demon
 - **go.work**: Workspace for multi-module project
 - **Separate go.mod per layer**: Clear dependency boundaries
 
+#### Release Tooling
+- **Release Script Validation**: Makefile target and documentation link validation
+- **brand_project.py**: Graceful handling of non-existent output directories
+- **SPDX Headers**: All layer READMEs include BSD-3-Clause license identifier
+
 ### Changed
 
 #### Port Naming Conventions
@@ -119,6 +124,16 @@ _First stable release - Professional Go 1.23+ application starter template demon
 - Updated `docs/index.md` and `docs/quick_start.md` for Go project (was Ada)
 - Updated README.md to reflect static dispatch via generics pattern
 - All formal documentation and diagrams updated with current paths
+
+### Fixed
+
+- **.gitattributes**: Replaced placeholder prose with actual git configuration
+- **architecture_mapping.md**: Corrected file paths to match current project structure
+- **ports_mapping.md**: Corrected file paths to match current project structure
+
+### Removed
+
+- **APP_VS_LIB_ARCHITECTURE.md**: Not needed for application starter template
 
 ### Architecture Patterns
 

@@ -1,6 +1,3 @@
-Here’s a Go-flavored `.gitattributes` in the same spirit as your Ada one:
-
-```gitattributes
 # =============================================================================
 # Git Attributes for Go Project - GitHub Linguist Configuration
 # =============================================================================
@@ -51,9 +48,6 @@ tools/** linguist-vendored
 *.rb linguist-vendored
 *.pl linguist-vendored
 
-# Examples (optional: remove this line if you want examples counted)
-# examples/** linguist-documentation
-
 # Build artifacts and generated files
 bin/** linguist-generated
 dist/** linguist-generated
@@ -89,4 +83,3 @@ go.sum text eol=lf
 # -----------------------------------------------------------------------------
 # Use Go-aware diff for Go files (requires diff "go" to be configured in .gitconfig)
 *.go diff=go
-```

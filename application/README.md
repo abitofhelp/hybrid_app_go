@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Application Layer
 
 Orchestrates use cases and defines port interfaces for dependency inversion.

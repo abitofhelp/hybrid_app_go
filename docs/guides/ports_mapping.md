@@ -21,7 +21,7 @@ The key principle: **Application defines the ports, Infrastructure implements th
 
 ### Go Implementation
 
-**File**: `application/port/writer_port.go`
+**File**: `application/port/outbound/writer.go`
 
 ```go
 package port
@@ -46,7 +46,7 @@ type WriterPort interface {
 - Application layer defines the interface
 - Infrastructure layer provides concrete implementation
 
-**Usage in Use Case** (`application/usecase/greet_usecase.go`):
+**Usage in Use Case** (`application/usecase/greet.go`):
 
 ```go
 type GreetUseCase[W WriterPort] struct {
@@ -138,7 +138,7 @@ end Use_Case;
 
 ### Go Implementation
 
-**File**: `application/port/greet_port.go`
+**File**: `application/port/inbound/greet.go`
 
 ```go
 package port
@@ -171,7 +171,7 @@ func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd GreetCommand) domerr
 }
 ```
 
-**Usage in Presentation** (`presentation/cli/greet_command.go`):
+**Usage in Presentation** (`presentation/adapter/cli/command/greet.go`):
 
 ```go
 type GreetCommand struct {
@@ -244,7 +244,7 @@ package Greet_Command_Instance is new
 | Aspect | Go | Ada |
 |--------|-----|-----|
 | **Port Definition** | `interface GreetPort` in separate file | `with function` parameter (no separate file) |
-| **Port Location** | `application/port/greet_port.go` | Embedded in presentation package spec |
+| **Port Location** | `application/port/inbound/greet.go` | Embedded in presentation package spec |
 | **Binding** | Field in presentation struct | Generic formal parameter |
 | **Dispatch** | Static (via generic instantiation) | Static (via generic instantiation) |
 | **Runtime Overhead** | Zero | Zero |
@@ -265,35 +265,35 @@ Ada's generic formal parameters ARE the interface contract. Creating a separate 
 ### Go: Presentation → Application → Infrastructure
 
 ```
-1. Presentation (greet_command.go):
+1. Presentation (presentation/adapter/cli/command/greet.go):
    type GreetCommand struct {
        greetPort port.GreetPort  // Input port
    }
 
-2. Application (greet_port.go):
+2. Application (application/port/inbound/greet.go):
    type GreetPort interface {
        Execute(ctx, cmd) Result[Unit]
    }
 
-3. Application (greet_usecase.go):
+3. Application (application/usecase/greet.go):
    type GreetUseCase[W WriterPort] struct {
        writer W  // Output port
    }
    func (uc *GreetUseCase[W]) Execute(...) Result[Unit]  // Implements GreetPort
 
-4. Application (writer_port.go):
+4. Application (application/port/outbound/writer.go):
    type WriterPort interface {
        Write(ctx, message) Result[Unit]
    }
 
-5. Infrastructure (console_writer_adapter.go):
-   type ConsoleWriterAdapter struct {}
-   func (cwa *ConsoleWriterAdapter) Write(...) Result[Unit]  // Implements WriterPort
+5. Infrastructure (infrastructure/adapter/consolewriter.go):
+   type ConsoleWriter struct {}
+   func (cw *ConsoleWriter) Write(...) Result[Unit]  // Implements WriterPort
 
-6. Bootstrap (cli.go):
-   writer := &adapter.ConsoleWriterAdapter{}
-   useCase := usecase.NewGreetUseCase[adapter.WriterPort](writer)
-   cmd := cli.NewGreetCommand(useCase)
+6. Bootstrap (bootstrap/cli/cli.go):
+   writer := &adapter.ConsoleWriter{}
+   useCase := usecase.NewGreetUseCase[*adapter.ConsoleWriter](writer)
+   cmd := command.NewGreetCommand(useCase)
 ```
 
 ### Ada: Presentation → Application → Infrastructure

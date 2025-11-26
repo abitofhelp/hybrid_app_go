@@ -34,11 +34,11 @@ Both implementations follow **identical architecture** (Hybrid DDD/Clean/Hexagon
 
 | Go | Ada | Notes |
 |----|-----|-------|
-| `application/port/unit.go` | `application/application-unit_type.ads` | ✅ Same: Unit type for void returns |
-| `application/port/writer_port.go` | `application/application-console_port.ads` | ⚠️ **Different pattern** (see below) |
-| `application/port/greet_command.go` | **MISSING** | ❌ Missing DTO |
-| `application/port/greet_port.go` | **MISSING** | ❌ Missing input port interface |
-| `application/usecase/greet_usecase.go` | `application/usecase/application-usecase-greet.ads/adb` | ✅ Same concept, different idiom |
+| `application/model/unit.go` | `application/application-unit_type.ads` | ✅ Same: Unit type for void returns |
+| `application/port/outbound/writer.go` | `application/application-console_port.ads` | ⚠️ **Different pattern** (see below) |
+| `application/command/greet.go` | **MISSING** | ❌ Missing DTO |
+| `application/port/inbound/greet.go` | **MISSING** | ❌ Missing input port interface |
+| `application/usecase/greet.go` | `application/usecase/application-usecase-greet.ads/adb` | ✅ Same concept, different idiom |
 
 **Key Differences - Ports Pattern**:
 
@@ -98,7 +98,7 @@ end Use_Case;
 
 | Go | Ada | Notes |
 |----|-----|-------|
-| `infrastructure/adapter/console_writer_adapter.go` | `infrastructure/adapter/infrastructure-adapter-console_writer.ads/adb` | ✅ Same: Console output adapter |
+| `infrastructure/adapter/consolewriter.go` | `infrastructure/adapter/infrastructure-adapter-console_writer.ads/adb` | ✅ Same: Console output adapter |
 
 **Naming**:
 - ✅ Go: `ConsoleWriterAdapter` → Ada: `Console_Writer` (matches, Ada uses `_` separator)
@@ -116,7 +116,7 @@ end Use_Case;
 
 | Go | Ada | Notes |
 |----|-----|-------|
-| `presentation/cli/greet_command.go` | `presentation/presentation-cli_controller.ads/adb` | ✅ Same: CLI command handler |
+| `presentation/adapter/cli/command/greet.go` | `presentation/presentation-cli_controller.ads/adb` | ✅ Same: CLI command handler |
 
 **Naming**:
 - ⚠️ Go: `GreetCommand` → Ada: `CLI_Controller` (different name, same role)
@@ -136,11 +136,11 @@ end Use_Case;
 
 | Go | Ada | Notes |
 |----|-----|-------|
-| `bootstrap/cli.go` | **Embedded in main** | ⚠️ Different structure |
+| `bootstrap/cli/cli.go` | **Embedded in main** | ⚠️ Different structure |
 | `cmd/greeter/main.go` | `src/greeter.adb` | ✅ Same: Main entry point |
 
 **Key Differences**:
-- **Go**: Has separate `bootstrap/cli.go` package that wires dependencies
+- **Go**: Has separate `bootstrap/cli/cli.go` package that wires dependencies
 - **Ada**: Wiring done directly in `greeter.adb` (no separate bootstrap package)
 - **Both**: Perform same function - instantiate generics and wire dependencies
 
@@ -184,7 +184,7 @@ package Greet_UC is new Use_Case(Console_Write => Writer.Write);
 ## Missing Ada Components (For Educational Parity)
 
 ### 1. ❌ GreetCommand DTO
-**Go has**: `application/port/greet_command.go`
+**Go has**: `application/command/greet.go`
 ```go
 type GreetCommand struct {
     Name string
@@ -201,7 +201,7 @@ end record;
 **Why**: Shows proper DTO pattern for crossing architectural boundaries.
 
 ### 2. ❌ GreetPort Input Port Interface
-**Go has**: `application/port/greet_port.go`
+**Go has**: `application/port/inbound/greet.go`
 ```go
 type GreetPort interface {
     Execute(ctx context.Context, cmd GreetCommand) mo.Result[Unit]

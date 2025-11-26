@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Infrastructure Layer
 
 Implements outbound ports with concrete adapters for external services.

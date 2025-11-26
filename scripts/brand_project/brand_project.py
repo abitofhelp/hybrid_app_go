@@ -285,10 +285,25 @@ The script will:
 
     # Determine target directory (output_dir / project_name)
     output_dir = args.output.resolve()
-    if not output_dir.exists():
-        print_error(f"Output directory does not exist: {output_dir}")
-        return 1
+
+    # In dry-run mode, we don't require the output directory to exist
+    if not args.dry_run and not output_dir.exists():
+        # Try to create it
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            print_info(f"Created output directory: {output_dir}")
+        except Exception as e:
+            print_error(f"Could not create output directory: {output_dir}")
+            print_error(f"  {e}")
+            return 1
+
     target_dir = output_dir / new_repo.project_name
+
+    # Warn if target would be nested (common mistake: -o ../my_proj instead of -o ..)
+    if output_dir.name == new_repo.project_name:
+        print_warning(f"Output directory name matches project name.")
+        print_warning(f"  Target will be: {target_dir}")
+        print_warning(f"  Did you mean: -o {output_dir.parent}?")
 
     # Create config
     config = ProjectConfig(

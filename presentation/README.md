@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Presentation Layer
 
 Implements inbound adapters that handle user interaction and call application use cases.

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Bootstrap Layer
 
 The composition root that wires all dependencies together using static dispatch.

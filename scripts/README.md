@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Project Scripts
 
 **Organized automation scripts for development, testing, and project branding**

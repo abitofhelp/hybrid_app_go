@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Domain Layer
 
 The innermost layer containing pure business logic with **zero external dependencies**.
