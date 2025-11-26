@@ -1,11 +1,11 @@
 # Software Design Specification (SDS)
 
-**Project:** Hybrid_App_Ada - Ada 2022 Application Starter
+**Project:** Hybrid_App_Go - Go 1.22+ Application Starter
 **Version:** 1.0.0
-**Date:** November 18, 2025
+**Date:** November 25, 2025
 **SPDX-License-Identifier:** BSD-3-Clause
 **License File:** See the LICENSE file in the project root.
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.
+**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
 **Status:** Released
 
 ---
@@ -14,7 +14,7 @@
 
 ### 1.1 Purpose
 
-This Software Design Specification (SDS) describes the architectural design and detailed design of Hybrid_App_Ada, a professional Ada 2022 application starter demonstrating hexagonal architecture with functional programming principles.
+This Software Design Specification (SDS) describes the architectural design and detailed design of Hybrid_App_Go, a professional Go 1.22+ application starter demonstrating hexagonal architecture with functional programming principles.
 
 ### 1.2 Scope
 
@@ -24,7 +24,7 @@ This document covers:
 - Key components and their responsibilities
 - Data flow and error handling strategies
 - Design patterns employed
-- Static dependency injection implementation
+- Static dependency injection implementation via generics
 
 ---
 
@@ -32,7 +32,7 @@ This document covers:
 
 ### 2.1 Architecture Style
 
-Hybrid_App_Ada uses **Hexagonal Architecture** (Ports and Adapters / Clean Architecture).
+Hybrid_App_Go uses **Hexagonal Architecture** (Ports and Adapters / Clean Architecture).
 
 **Benefits**:
 - Clear separation of concerns
@@ -44,44 +44,44 @@ Hybrid_App_Ada uses **Hexagonal Architecture** (Ports and Adapters / Clean Archi
 ### 2.2 Layer Organization
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Bootstrap                                              │
-│  (Composition Root - Wires Everything)                  │
-│  - Generic instantiations                               │
-│  - Port-to-adapter binding                              │
-│  - Application entry point                              │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Presentation                                           │
-│  (Driving Adapters - User Interfaces)                   │
-│  - CLI commands                                         │
-│  - Argument parsing                                     │
-│  - Error message formatting                             │
-│  - Depends on: Application ONLY (not Domain)            │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Application                                            │
-│  (Use Cases + Ports)                                    │
-│  - Use case orchestration                               │
-│  - Inbound ports (use case interfaces)                  │
-│  - Outbound ports (infrastructure interfaces)           │
-│  - Commands (input DTOs)                                │
-│  - Models (output DTOs)                                 │
-│  - Application.Error (re-exports Domain.Error)          │
-│  - Depends on: Domain                                   │
-└─────────────────────────────────────────────────────────┘
-                     ↓              ↑
-┌──────────────────────┐    ┌──────────────────────────────┐
-│  Infrastructure      │    │  Domain                      │
-│  (Driven Adapters)   │    │  (Business Logic)            │
-│  - Console Writer    │    │  - Value Objects (Person)    │
-│  - Adapts external   │    │  - Error types + Result      │
-│  - Exception → Result│    │  - Pure functions            │
-│  - Depends on:       │    │  - ZERO dependencies         │
-│    App + Domain      │    │                              │
-└──────────────────────┘    └──────────────────────────────┘
++-------------------------------------------------------------+
+|  Bootstrap                                                  |
+|  (Composition Root - Wires Everything)                      |
+|  - Generic instantiations with concrete types               |
+|  - Port-to-adapter binding                                  |
+|  - Application entry point                                  |
++-------------------------------------------------------------+
+                          |
++-------------------------------------------------------------+
+|  Presentation                                               |
+|  (Driving Adapters - User Interfaces)                       |
+|  - CLI commands                                             |
+|  - Argument parsing                                         |
+|  - Error message formatting                                 |
+|  - Depends on: Application ONLY (not Domain)                |
++-------------------------------------------------------------+
+                          |
++-------------------------------------------------------------+
+|  Application                                                |
+|  (Use Cases + Ports)                                        |
+|  - Use case orchestration                                   |
+|  - Inbound ports (use case interfaces)                      |
+|  - Outbound ports (infrastructure interfaces)               |
+|  - Commands (input DTOs)                                    |
+|  - Models (output DTOs)                                     |
+|  - application/error (re-exports domain/error)              |
+|  - Depends on: Domain                                       |
++-------------------------------------------------------------+
+                     |              ^
++----------------------+    +------------------------------+
+|  Infrastructure      |    |  Domain                      |
+|  (Driven Adapters)   |    |  (Business Logic)            |
+|  - Console Writer    |    |  - Value Objects (Person)    |
+|  - Adapts external   |    |  - Error types + Result[T]   |
+|  - Panic -> Result   |    |  - Pure functions            |
+|  - Depends on:       |    |  - ZERO dependencies         |
+|    App + Domain      |    |                              |
++----------------------+    +------------------------------+
 ```
 
 ### 2.3 Layer Responsibilities
@@ -89,9 +89,9 @@ Hybrid_App_Ada uses **Hexagonal Architecture** (Ports and Adapters / Clean Archi
 #### Domain Layer
 - **Purpose**: Pure business logic, no external dependencies
 - **Components**:
-  - Value Objects: `Domain.Value_Object.Person`
-  - Error types: `Domain.Error.Error_Type`, `Error_Kind`
-  - Result monad: `Domain.Error.Result.Generic_Result`
+  - Value Objects: `domain/valueobject/person.go`
+  - Error types: `domain/error/error.go`
+  - Result monad: `domain/error/result.go`
 - **Rules**:
   - Immutable value objects
   - Validation in constructors
@@ -101,45 +101,48 @@ Hybrid_App_Ada uses **Hexagonal Architecture** (Ports and Adapters / Clean Archi
 #### Application Layer
 - **Purpose**: Orchestrate domain logic, define port interfaces
 - **Components**:
-  - Use Cases: `Application.Usecase.Greet`
-  - Commands: `Application.Command.Greet`
-  - Models: `Application.Model.Unit`
-  - Inbound Ports: Use case interfaces
-  - Outbound Ports: `Application.Port.Outward.Writer`
-  - Error Re-export: `Application.Error`
+  - Use Cases: `application/usecase/greet.go`
+  - Commands: `application/command/greet.go`
+  - Models: `application/model/unit.go`
+  - Inbound Ports: `application/port/inward/greet.go`
+  - Outbound Ports: `application/port/outward/writer.go`
+  - Error Re-export: `application/error/error.go`
 - **Rules**:
   - Stateless use cases
   - Depends on Domain only
   - Defines interfaces for infrastructure
+  - Generic over port types (static dispatch)
 
 #### Infrastructure Layer
 - **Purpose**: Implement technical concerns, adapt external systems
 - **Components**:
-  - Adapters: `Infrastructure.Adapter.Console_Writer`
+  - Adapters: `infrastructure/adapter/consolewriter.go`
   - Implements outbound ports
 - **Rules**:
   - Implements Application port interfaces
-  - Catches exceptions at boundaries
-  - Converts exceptions to Result errors
+  - Catches panics at boundaries via defer/recover
+  - Converts panics to Result errors
   - Depends on Application + Domain
+  - Supports context.Context for cancellation
 
 #### Presentation Layer
 - **Purpose**: User interface implementation
 - **Components**:
-  - CLI Commands: `Presentation.CLI.Command.Greet`
+  - CLI Commands: `presentation/cli/command/greet.go`
   - Argument parsing
   - Error formatting
 - **Rules**:
   - **Cannot access Domain directly**
-  - Uses Application.Error (not Domain.Error)
-  - Uses Application.Model (not Domain entities)
+  - Uses application/error (not domain/error)
+  - Uses application/model (not Domain entities)
   - Depends on Application ONLY
+  - Generic over use case types (static dispatch)
 
 #### Bootstrap Layer
 - **Purpose**: Composition root (dependency injection)
 - **Components**:
-  - `Bootstrap.CLI.Run` - wires everything together
-  - Generic instantiations
+  - `bootstrap/cli/cli.go` - wires everything together
+  - Generic instantiations with concrete types
   - Port-adapter binding
 - **Rules**:
   - Only layer that knows about all others
@@ -154,199 +157,262 @@ Hybrid_App_Ada uses **Hexagonal Architecture** (Ports and Adapters / Clean Archi
 
 #### Value Objects
 
-**Domain.Value_Object.Person**:
-```ada
-type Person is private;
+**domain/valueobject/person.go**:
+```go
+type Person struct {
+    name string  // private, immutable
+}
 
-function Create (Name : String) return Person_Result;
-function Get_Name (Self : Person) return String;
+func CreatePerson(name string) domerr.Result[Person] {
+    // Validation
+    if len(name) == 0 {
+        return domerr.Err[Person](domerr.NewValidationError("name cannot be empty"))
+    }
+    if len(name) > MaxNameLength {
+        return domerr.Err[Person](domerr.NewValidationError("name exceeds maximum length"))
+    }
+    return domerr.Ok(Person{name: name})
+}
 
--- Implementation: Bounded_String (no heap)
+func (p Person) GetName() string { return p.name }
+func (p Person) GreetingMessage() string { return "Hello, " + p.name + "!" }
 ```
 
 **Design Decisions**:
-- Immutable (private type, no setters)
-- Validation in `Create` function
-- Returns `Result[Person, Error]`
-- Bounded strings (no heap allocation)
+- Immutable (unexported field, no setters)
+- Validation in `CreatePerson` factory function
+- Returns `Result[Person]`
+- Pure methods (no side effects)
 
 #### Error Handling
 
-**Domain.Error**:
-```ada
-type Error_Kind is (Validation_Error, Infrastructure_Error);
+**domain/error/result.go**:
+```go
+type ErrorKind int
 
-type Error_Type is record
-   Kind    : Error_Kind;
-   Message : Bounded_String;
-end record;
+const (
+    ValidationError ErrorKind = iota
+    InfrastructureError
+)
 
-generic
-   type T is private;
-package Generic_Result is
-   type Result (Is_Success : Boolean) is private;
+type ErrorType struct {
+    Kind    ErrorKind
+    Message string
+}
 
-   function Ok (Value : T) return Result;
-   function Error (Kind : Error_Kind; Message : String) return Result;
+type Result[T any] struct {
+    value   T
+    err     ErrorType
+    isError bool
+}
 
-   function Is_Ok (Self : Result) return Boolean;
-   function Value (Self : Result) return T;
-   function Error_Info (Self : Result) return Error_Type;
-end Generic_Result;
+func Ok[T any](value T) Result[T]
+func Err[T any](err ErrorType) Result[T]
+
+func (r Result[T]) IsOk() bool
+func (r Result[T]) IsError() bool
+func (r Result[T]) Value() T         // Pre: IsOk()
+func (r Result[T]) ErrorInfo() ErrorType  // Pre: IsError()
+func (r Result[T]) UnwrapOr(defaultVal T) T
 ```
 
 **Design Decisions**:
-- Discriminated record for Result (stack-based)
-- No exceptions thrown
-- Type-safe access (preconditions on Value/Error_Info)
-- Generic package for reuse across types
+- Generic Result[T] for type-safe error handling
+- Value semantics (not pointer receiver)
+- No panics thrown from accessors (use preconditions)
+- UnwrapOr for convenience with defaults
 
 ### 3.2 Application Layer Design
 
 #### Use Cases
 
-**Application.Usecase.Greet** (Generic):
-```ada
-generic
-   with function Writer (Message : String) return Unit_Result.Result;
-package Application.Usecase.Greet is
-   function Execute (Cmd : Greet_Command) return Unit_Result.Result;
-end Application.Usecase.Greet;
-```
+**application/usecase/greet.go** (Generic):
+```go
+// GreetUseCase is generic over WriterPort for static dispatch
+type GreetUseCase[W outward.WriterPort] struct {
+    writer W
+}
 
-**Implementation**:
-```ada
-function Execute (Cmd : Greet_Command) return Unit_Result.Result is
-   Person_Result : constant Person_Result.Result :=
-      Domain.Value_Object.Person.Create (Cmd.Name);
-begin
-   if Person_Result.Is_Error then
-      return Unit_Result.Error (Person_Result.Error_Info);
-   end if;
+func NewGreetUseCase[W outward.WriterPort](writer W) *GreetUseCase[W] {
+    return &GreetUseCase[W]{writer: writer}
+}
 
-   declare
-      Person  : constant Domain.Value_Object.Person := Person_Result.Value;
-      Message : constant String := "Hello, " & Get_Name (Person) & "!";
-   begin
-      return Writer (Message);
-   end;
-end Execute;
+func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd command.GreetCommand) domerr.Result[model.Unit] {
+    // 1. Extract name from DTO
+    name := cmd.GetName()
+
+    // 2. Validate and create Person (domain validation)
+    personResult := valueobject.CreatePerson(name)
+    if personResult.IsError() {
+        return domerr.Err[model.Unit](personResult.ErrorInfo())
+    }
+
+    // 3. Generate greeting message
+    person := personResult.Value()
+    message := person.GreetingMessage()
+
+    // 4. Write via output port (STATIC DISPATCH)
+    return uc.writer.Write(ctx, message)
+}
 ```
 
 **Design Decisions**:
-- Generic package (static dispatch)
-- Writer function passed as generic parameter
+- Generic over WriterPort (static dispatch)
+- Writer type W known at instantiation
 - Railway-oriented error handling
 - Pure orchestration (no business logic)
+- Context support for cancellation
 
 #### Application.Error Re-Export Pattern
 
 **Problem**: Presentation cannot access Domain directly
 
 **Solution**:
-```ada
-with Domain.Error;
+```go
+// application/error/error.go
+import domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
 
-package Application.Error is
-   subtype Error_Type is Domain.Error.Error_Type;
-   subtype Error_Kind is Domain.Error.Error_Kind;
-   package Error_Strings renames Domain.Error.Error_Strings;
+// Type aliases - zero overhead
+type ErrorType = domerr.ErrorType
+type ErrorKind = domerr.ErrorKind
+type Result[T any] = domerr.Result[T]
 
-   Validation_Error     : constant Error_Kind := Domain.Error.Validation_Error;
-   Infrastructure_Error : constant Error_Kind := Domain.Error.Infrastructure_Error;
-end Application.Error;
+// Re-export error kinds
+var (
+    ValidationError     = domerr.ValidationError
+    InfrastructureError = domerr.InfrastructureError
+)
 ```
 
 **Benefits**:
-- Zero overhead (subtype/renames)
-- Maintains boundary (Presentation → Application only)
+- Zero overhead (type aliases)
+- Maintains boundary (Presentation -> Application only)
 - Type-safe (compile-time verification)
 
 ### 3.3 Infrastructure Layer Design
 
-**Infrastructure.Adapter.Console_Writer**:
-```ada
---  Internal action that performs the I/O
-function Write_Action (Message : String) return Unit is
-begin
-   Ada.Text_IO.Put_Line (Message);
-   return Unit_Value;
-end Write_Action;
+**infrastructure/adapter/consolewriter.go**:
+```go
+type ConsoleWriter struct {
+    w io.Writer
+}
 
---  Exception mapper
-function Map_Exception (Occ : Exception_Occurrence)
-  return Domain.Error.Error_Type
-is (Domain.Error.New_Error
-     (Kind    => Domain.Error.Infrastructure_Error,
-      Message => "Console write failed: " & Exception_Message (Occ)));
+func NewConsoleWriter() *ConsoleWriter {
+    return &ConsoleWriter{w: os.Stdout}
+}
 
---  Instantiate parameterized Try bridge
-function Write_With_Try is new
-  Functional.Try.Try_To_Result_With_Param
-    (T             => Unit,
-     E             => Domain.Error.Error_Type,
-     Param         => String,
-     Result_Pkg    => Unit_Functional_Result,
-     Map_Exception => Map_Exception,
-     Action        => Write_Action);
+func NewWriter(w io.Writer) *ConsoleWriter {
+    return &ConsoleWriter{w: w}
+}
 
---  Public Write function
-function Write (Message : String) return Unit_Result.Result is
-   FR : constant Unit_Functional_Result.Result := Write_With_Try (Message);
-begin
-   return To_Domain_Result (FR);
-end Write;
+func (cw *ConsoleWriter) Write(ctx context.Context, message string) (result domerr.Result[model.Unit]) {
+    // Panic recovery at infrastructure boundary
+    defer func() {
+        if r := recover(); r != nil {
+            result = domerr.Err[model.Unit](
+                domerr.NewInfrastructureError(fmt.Sprintf("panic recovered: %v", r)))
+        }
+    }()
+
+    // Check context cancellation
+    select {
+    case <-ctx.Done():
+        return domerr.Err[model.Unit](
+            domerr.NewInfrastructureError("write cancelled: " + ctx.Err().Error()))
+    default:
+    }
+
+    // Perform I/O
+    _, err := fmt.Fprintln(cw.w, message)
+    if err != nil {
+        return domerr.Err[model.Unit](
+            domerr.NewInfrastructureError("write failed: " + err.Error()))
+    }
+
+    return domerr.Ok(model.UnitValue)
+}
 ```
 
 **Design Decisions**:
-- Uses Functional.Try.Try_To_Result_With_Param for exception boundary
-- Parameterized approach (no module-level state, thread-safe)
-- Separates concerns: I/O action vs exception handling
-- Implements outbound port signature
-- Converts Functional.Result to Domain.Result
+- Panic recovery via defer/recover
+- Context cancellation support
+- Implements WriterPort interface
+- Converts all errors to Result
+- io.Writer for testability
 
 ### 3.4 Presentation Layer Design
 
-**Presentation.CLI.Command.Greet** (Generic):
-```ada
-generic
-   with function Execute_Greet_UseCase (Cmd : Greet_Command)
-      return Unit_Result.Result;
-package Presentation.CLI.Command.Greet is
-   function Run return Integer;
-end Presentation.CLI.Command.Greet;
+**presentation/cli/command/greet.go** (Generic):
+```go
+// GreetCommand is generic over GreetPort for static dispatch
+type GreetCommand[UC inward.GreetPort] struct {
+    useCase UC
+}
+
+func NewGreetCommand[UC inward.GreetPort](useCase UC) *GreetCommand[UC] {
+    return &GreetCommand[UC]{useCase: useCase}
+}
+
+func (c *GreetCommand[UC]) Run(args []string) int {
+    // Parse arguments
+    if len(args) != 2 {
+        fmt.Fprintln(os.Stderr, "Usage: greeter <name>")
+        return 1
+    }
+
+    // Create command DTO
+    cmd := command.NewGreetCommand(args[1])
+    ctx := context.Background()
+
+    // Execute use case (STATIC DISPATCH)
+    result := c.useCase.Execute(ctx, cmd)
+
+    if result.IsError() {
+        errInfo := result.ErrorInfo()
+        switch errInfo.Kind {
+        case apperr.ValidationError:
+            fmt.Fprintf(os.Stderr, "Error: Please provide a valid name.\n")
+        case apperr.InfrastructureError:
+            fmt.Fprintf(os.Stderr, "Error: A system error occurred.\n")
+        }
+        return 1
+    }
+
+    return 0
+}
 ```
 
 **Design Decisions**:
-- Generic (receives use case function)
+- Generic over GreetPort (receives use case interface)
 - Returns exit code (0=success, 1=error)
-- Uses Application.Error (not Domain.Error)
+- Uses application/error (not domain/error)
+- Pattern matches on ErrorKind for user-friendly messages
 
 ### 3.5 Bootstrap Design
 
-**Bootstrap.CLI.Run**:
-```ada
-function Run return Integer is
-   -- Step 1: Wire Infrastructure → Port
-   package Writer_Port is new Application.Port.Outward.Writer.Generic_Writer
-     (Write => Infrastructure.Adapter.Console_Writer.Write);
+**bootstrap/cli/cli.go**:
+```go
+func Run(args []string) int {
+    // Step 1: Create Infrastructure adapter
+    consoleWriter := adapter.NewConsoleWriter()
 
-   -- Step 2: Wire Use Case → Port
-   package Greet_UseCase is new Application.Usecase.Greet
-     (Writer => Writer_Port.Write_Message);
+    // Step 2: Instantiate Use Case with concrete writer type
+    // STATIC DISPATCH: GreetUseCase knows *ConsoleWriter at compile time
+    greetUseCase := usecase.NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
 
-   -- Step 3: Wire Command → Use Case
-   package Greet_Command is new Presentation.CLI.Command.Greet
-     (Execute_Greet_UseCase => Greet_UseCase.Execute);
+    // Step 3: Instantiate Command with concrete use case type
+    // STATIC DISPATCH continues through the chain
+    greetCommand := command.NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](greetUseCase)
 
-   -- Step 4: Execute
-   return Greet_Command.Run;
-end Run;
+    // Step 4: Run the application
+    return greetCommand.Run(args)
+}
 ```
 
 **Design Decisions**:
 - All wiring in one place
 - Static instantiation (compile-time)
+- Concrete type parameters at each level
 - Clear dependency flow
 - No runtime overhead
 
@@ -356,13 +422,13 @@ end Run;
 
 ### 4.1 Railway-Oriented Programming
 
-**Pattern**: Result monad for error handling
-**Purpose**: Avoid exceptions, explicit error paths
-**Implementation**: `Domain.Error.Result.Generic_Result`
+**Pattern**: Result[T] monad for error handling
+**Purpose**: Avoid panics, explicit error paths
+**Implementation**: `domain/error/result.go`
 
 ```
-Success Track:  Ok(Value) → Continue → Ok(Result)
-Error Track:    Error → Propagate → Error
+Success Track:  Ok(Value) -> Continue -> Ok(Result)
+Error Track:    Err(Error) -> Propagate -> Err(Error)
 ```
 
 ### 4.2 Hexagonal Architecture (Ports and Adapters)
@@ -371,22 +437,30 @@ Error Track:    Error → Propagate → Error
 **Ports**: Interfaces defined in Application layer
 **Adapters**: Implementations in Infrastructure/Presentation
 
-### 4.3 Static Dependency Injection
+### 4.3 Static Dependency Injection via Generics
 
-**Pattern**: Generic packages with function parameters
-**Wiring**: Bootstrap instantiates all generics
+**Pattern**: Generic types with interface constraints
+**Wiring**: Bootstrap instantiates all generics with concrete types
 **Benefits**: Compile-time resolution, zero overhead, type-safe
+
+```go
+// Generic definition with interface constraint
+type GreetUseCase[W WriterPort] struct { writer W }
+
+// Instantiation with concrete type
+uc := NewGreetUseCase[*ConsoleWriter](writer)
+```
 
 ### 4.4 Application Service Re-Export
 
 **Pattern**: Facade pattern for layer boundaries
 **Purpose**: Presentation cannot access Domain
-**Implementation**: Application.Error re-exports Domain.Error
+**Implementation**: application/error re-exports domain/error
 
 ### 4.5 Value Object Pattern
 
 **Pattern**: Immutable domain primitives with validation
-**Implementation**: `Domain.Value_Object.Person`
+**Implementation**: `domain/valueobject/person.go`
 **Benefits**: Type safety, validated at construction, immutable
 
 ---
@@ -396,40 +470,56 @@ Error Track:    Error → Propagate → Error
 ### 5.1 Request Flow (Success Path)
 
 ```
-User: ./bin/greeter Alice
-    ↓
-main (greeter.adb): calls Bootstrap.CLI.Run
-    ↓
-Bootstrap.CLI.Run: wires dependencies, calls Presentation
-    ↓
-Presentation.CLI.Command.Greet.Run: parses args, creates Greet_Command
-    ↓
-Application.Usecase.Greet.Execute: validates, orchestrates
-    ↓
-Domain.Value_Object.Person.Create: validates "Alice" → Ok(Person)
-    ↓
-Application.Usecase.Greet: formats message
-    ↓
-Infrastructure.Adapter.Console_Writer.Write: outputs "Hello, Alice!"
-    ↓
-Returns: Ok(Unit) → exit code 0
+User: ./greeter Alice
+    |
+main (cmd/greeter/main.go): calls bootstrap.Run(os.Args)
+    |
+bootstrap.Run: wires dependencies (generic instantiation), calls Presentation
+    |
+presentation.GreetCommand.Run: parses args, creates command.GreetCommand DTO
+    |
+application.GreetUseCase.Execute: validates, orchestrates (STATIC DISPATCH)
+    |
+domain.CreatePerson("Alice"): validates -> Ok(Person)
+    |
+Person.GreetingMessage(): returns "Hello, Alice!"
+    |
+infrastructure.ConsoleWriter.Write: outputs "Hello, Alice!" (STATIC DISPATCH)
+    |
+Returns: Ok(Unit) -> exit code 0
 ```
 
 ### 5.2 Error Flow
 
 ```
-User: ./bin/greeter ""
-    ↓
-Domain.Value_Object.Person.Create: validates empty string
-    ↓
-Returns: Error(Validation_Error, "Name cannot be empty")
-    ↓
-Application.Usecase.Greet: checks Is_Error → propagates
-    ↓
-Presentation: pattern matches Error_Kind
-    ↓
-Displays: "Error: Name cannot be empty"
-    ↓
+User: ./greeter ""
+    |
+domain.CreatePerson(""): validates empty string
+    |
+Returns: Err(ValidationError, "name cannot be empty")
+    |
+application.GreetUseCase: checks IsError() -> propagates
+    |
+presentation.GreetCommand: pattern matches ErrorKind
+    |
+Displays: "Error: Please provide a valid name."
+    |
+Returns: exit code 1
+```
+
+### 5.3 Context Cancellation Flow
+
+```
+User: ./greeter Alice (then Ctrl+C)
+    |
+Context is cancelled
+    |
+infrastructure.ConsoleWriter.Write: checks ctx.Done()
+    |
+Returns: Err(InfrastructureError, "write cancelled: context canceled")
+    |
+Propagates up through layers
+    |
 Returns: exit code 1
 ```
 
@@ -439,17 +529,17 @@ Returns: exit code 1
 
 ### 6.1 Thread Safety
 
-- **Domain**: Stateless, pure functions → inherently thread-safe
-- **Application**: Stateless use cases → thread-safe
-- **Infrastructure**: Adapters may have state (future consideration)
+- **Domain**: Stateless, pure functions -> inherently thread-safe
+- **Application**: Stateless use cases -> thread-safe
+- **Infrastructure**: Uses context for cancellation -> goroutine-safe
 - **Presentation**: Single-threaded CLI (current design)
 
-### 6.2 Future Concurrency Support
+### 6.2 Context Support
 
-For concurrent use cases (v2.0+):
-- Use Ada tasks with protected objects
-- Ravenscar profile for safety-critical systems
-- Port abstraction supports multiple implementations
+Context is passed through all layers for:
+- Cancellation propagation
+- Deadline support
+- Request-scoped values (future)
 
 ---
 
@@ -458,15 +548,15 @@ For concurrent use cases (v2.0+):
 ### 7.1 Zero Overhead Abstractions
 
 - **Static Dispatch**: Generics compiled to direct calls (no vtable)
-- **Result Monad**: Stack-based discriminated record (no heap)
-- **Bounded Strings**: Domain uses fixed-size buffers (no allocation)
+- **Result Monad**: Value types (stack allocation)
+- **Bounded Strings**: No unbounded allocation in Domain
 - **Pure Functions**: Compiler can optimize aggressively
 
 ### 7.2 Memory Management
 
-- **No Heap in Domain**: All bounded types
 - **Stack Allocation**: Result values, commands, models
-- **No Garbage Collection**: Deterministic cleanup
+- **Minimal Heap**: Only for io.Writer in ConsoleWriter
+- **Garbage Collection**: Standard Go GC (minimal pressure)
 
 ---
 
@@ -491,15 +581,22 @@ For concurrent use cases (v2.0+):
 ### 9.1 Project Structure
 
 ```
-hybrid_app_ada/
-├── hybrid_app_ada.gpr     # Main project file (single project)
-├── alire.toml            # Alire manifest
-├── Makefile              # Build automation
-└── src/                  # All sources in one tree
+hybrid_app_go/
+|-- go.work            # Workspace file
+|-- go.mod             # Root module
+|-- Makefile           # Build automation
+|-- cmd/greeter/       # Application entry point
+|-- domain/            # Domain layer module
+|-- application/       # Application layer module
+|-- infrastructure/    # Infrastructure layer module
+|-- presentation/      # Presentation layer module
+|-- bootstrap/         # Bootstrap layer module
+|-- test/integration/  # CLI integration tests
+|-- docs/              # Documentation
 ```
 
-**Design Decision**: Single-project structure (not aggregate)
-**Benefits**: Simple deployment, Alire-compatible, fast builds
+**Design Decision**: go.work workspace with separate modules per layer
+**Benefits**: Clear boundaries, independent testing, modular deployment
 
 ---
 
@@ -509,24 +606,65 @@ hybrid_app_ada/
 
 ```
 test/
-├── unit/               # Domain + Application logic (48 tests)
-├── integration/        # Cross-layer tests (26 tests)
-├── e2e/                # Full system tests (8 tests)
-└── common/             # Test framework
+|-- integration/          # CLI integration tests (23 tests)
+    |-- greet_flow_test.go
+
+domain/
+|-- error/result_test.go  # Result monad unit tests (19 assertions)
+|-- valueobject/person_test.go  # Person unit tests (23 assertions)
 ```
 
 ### 10.2 Testing Approach
 
 - **Unit**: Test Domain in isolation (pure functions)
-- **Integration**: Test Application with real Infrastructure
-- **E2E**: Test via CLI (black-box testing)
+- **Integration**: Test entire CLI via binary execution
+- **No Mocks**: Integration tests run the actual binary
+
+---
+
+## 11. Static Dispatch vs Dynamic Dispatch
+
+### 11.1 Dynamic Dispatch (Traditional Go)
+
+```go
+type GreetUseCase struct {
+    writer WriterPort  // interface type
+}
+
+func (uc *GreetUseCase) Execute(...) {
+    uc.writer.Write(...)  // vtable lookup at runtime
+}
+```
+
+### 11.2 Static Dispatch (This Project)
+
+```go
+type GreetUseCase[W WriterPort] struct {
+    writer W  // concrete type parameter
+}
+
+func (uc *GreetUseCase[W]) Execute(...) {
+    uc.writer.Write(...)  // direct call, no vtable
+}
+```
+
+### 11.3 Comparison
+
+| Aspect | Dynamic Dispatch | Static Dispatch |
+|--------|------------------|-----------------|
+| Method Resolution | Runtime (vtable) | Compile-time |
+| Runtime Overhead | Interface conversion | Zero |
+| Inlining | Not possible | Possible |
+| Type Safety | Runtime checks | Compile-time |
+| Flexibility | Runtime swapping | Fixed at compile |
+| Binary Size | Smaller | Larger (monomorphization) |
 
 ---
 
 **Document Control**:
 - Version: 1.0.0
-- Last Updated: November 18, 2025
+- Last Updated: November 25, 2025
 - Status: Released
-- Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
+- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause
 - SPDX-License-Identifier: BSD-3-Clause

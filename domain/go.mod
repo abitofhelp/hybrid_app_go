@@ -5,5 +5,5 @@ module github.com/abitofhelp/hybrid_app_go/domain
 
 go 1.23
 
-// Domain layer - Pure business logic with ZERO external dependencies
+// Domain layer - Pure business logic with ZERO external module dependencies
 // Tests use ONLY stdlib testing package - no external test frameworks

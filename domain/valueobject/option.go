@@ -10,7 +10,7 @@
 //
 // Architecture Notes:
 //   - Generic over value type T
-//   - Pure domain implementation (ZERO external dependencies)
+//   - Pure domain implementation (ZERO external module dependencies)
 //   - Enables functional composition of optional values
 //   - Alternative to nil pointers
 //

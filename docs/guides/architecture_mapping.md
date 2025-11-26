@@ -10,7 +10,7 @@ Both implementations follow **identical architecture** (Hybrid DDD/Clean/Hexagon
 
 ## File-by-File Mapping
 
-### Domain Layer (Pure Business Logic - ZERO external dependencies)
+### Domain Layer (Pure Business Logic - ZERO external module dependencies)
 
 | Go | Ada | Notes |
 |----|-----|-------|

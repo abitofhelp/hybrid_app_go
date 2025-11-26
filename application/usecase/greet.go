@@ -12,19 +12,35 @@
 //   - Coordinates domain objects
 //   - Depends on output ports defined in application layer
 //   - Never imports infrastructure layer
+//   - Uses GENERICS for STATIC DISPATCH (compile-time resolution)
+//
+// Static Dispatch Pattern:
+//   - GreetUseCase[W WriterPort] is generic over the writer type
+//   - At instantiation, concrete type is known: NewGreetUseCase[*ConsoleWriter](writer)
+//   - Compiler devirtualizes method calls → zero runtime overhead
+//   - Equivalent to Ada's generic package instantiation
 //
 // Dependency Flow (all pointing INWARD toward Domain):
-//   - GreetUseCase -> domain.Person
-//   - GreetUseCase -> application.port.outward.WriterFunc (interface)
-//   - infrastructure.ConsoleWriter -> WriterFunc (implements)
-//   - Bootstrap wires them together
+//   - GreetUseCase[W] -> domain.Person (coordinates)
+//   - GreetUseCase[W] -> application.port.outward.WriterPort (interface constraint)
+//   - infrastructure.ConsoleWriter -> WriterPort (implements)
+//   - Bootstrap instantiates GreetUseCase[*ConsoleWriter]
+//
+// Mapping to Ada:
+//   - Ada: generic with function Writer(...) return Result; package Application.Usecase.Greet
+//   - Go: type GreetUseCase[W WriterPort] struct { writer W }
+//   - Both achieve: static dispatch, compile-time resolution
 //
 // Usage:
 //
 //	import "github.com/abitofhelp/hybrid_app_go/application/usecase"
 //
-//	uc := usecase.NewGreetUseCase(consoleWriter)
-//	result := uc.Execute(greetCommand)
+//	// Bootstrap instantiates with concrete type
+//	consoleWriter := &adapter.ConsoleWriter{...}
+//	uc := usecase.NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
+//
+//	// Use case Execute is statically dispatched
+//	result := uc.Execute(ctx, greetCommand)
 package usecase
 
 import (
@@ -39,31 +55,45 @@ import (
 
 // GreetUseCase orchestrates the greeting workflow.
 //
-// This use case demonstrates application-layer orchestration:
-//  1. Receives command DTO from presentation layer
-//  2. Validates input using domain layer (Person)
-//  3. Generates greeting message (domain logic)
-//  4. Writes output via infrastructure port
-//  5. Returns Result to presentation layer
+// This use case demonstrates application-layer orchestration with static dispatch:
+//  1. Generic over WriterPort: GreetUseCase[W WriterPort]
+//  2. Receives command DTO from presentation layer
+//  3. Validates input using domain layer (Person)
+//  4. Generates greeting message (domain logic)
+//  5. Writes output via infrastructure port (statically dispatched)
+//  6. Returns Result to presentation layer
 //
-// Design Pattern: Use Case
+// Static Dispatch:
+//   - Type parameter W is constrained to WriterPort interface
+//   - At instantiation, concrete type replaces W
+//   - Compiler knows exact type → method calls are devirtualized
+//   - Zero runtime overhead (no vtable lookup)
+//
+// Design Pattern: Generic Use Case (matching Ada's generic package)
 //   - Single responsibility (one business operation)
 //   - Coordinates domain objects
-//   - Depends on abstractions (ports), not implementations
+//   - Generic over port abstraction (static dispatch)
 //   - Returns Result for functional error handling
-type GreetUseCase struct {
-	writer outward.WriterFunc
+//
+// Implements: inward.GreetPort interface
+type GreetUseCase[W outward.WriterPort] struct {
+	writer W
 }
 
 // NewGreetUseCase creates a new GreetUseCase with injected dependencies.
 //
-// Dependency Injection Pattern:
-//   - Writer function is injected via constructor
-//   - Use case doesn't know the implementation
-//   - Infrastructure provides the implementation
-//   - Bootstrap wires them together
-func NewGreetUseCase(writer outward.WriterFunc) *GreetUseCase {
-	return &GreetUseCase{writer: writer}
+// Static Dependency Injection Pattern:
+//   - Type parameter W specifies the concrete writer type
+//   - Writer instance is injected via constructor
+//   - Use case doesn't know the implementation details
+//   - But compiler knows the concrete type for static dispatch
+//   - Bootstrap wires them together: NewGreetUseCase[*ConsoleWriter](writer)
+//
+// Mapping to Ada:
+//   - Ada: package Greet_UC is new Application.Usecase.Greet(Writer => Console_Writer.Write);
+//   - Go: uc := NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
+func NewGreetUseCase[W outward.WriterPort](writer W) *GreetUseCase[W] {
+	return &GreetUseCase[W]{writer: writer}
 }
 
 // Execute runs the greeting use case.
@@ -72,8 +102,13 @@ func NewGreetUseCase(writer outward.WriterFunc) *GreetUseCase {
 //  1. Extract name from GreetCommand DTO
 //  2. Validate and create Person from name
 //  3. Generate greeting message from Person
-//  4. Write greeting to console via output port
+//  4. Write greeting to console via output port (STATIC DISPATCH)
 //  5. Propagate any errors up to caller
+//
+// Static Dispatch:
+//   - uc.writer.Write() is statically dispatched because W is concrete at instantiation
+//   - Compiler knows exact implementation → no vtable lookup
+//   - Equivalent to Ada's generic instantiation with compile-time resolution
 //
 // Parameters:
 //   - ctx: Context for cancellation and deadlines (passed to infrastructure)
@@ -89,7 +124,7 @@ func NewGreetUseCase(writer outward.WriterFunc) *GreetUseCase {
 //   - Post: Returns Ok(Unit) if greeting succeeded
 //   - Post: Returns Err(ValidationError) if name validation failed
 //   - Post: Returns Err(InfrastructureError) if write failed or ctx cancelled
-func (uc *GreetUseCase) Execute(ctx context.Context, cmd command.GreetCommand) domerr.Result[model.Unit] {
+func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd command.GreetCommand) domerr.Result[model.Unit] {
 	// Step 1: Extract name from DTO
 	name := cmd.GetName()
 
@@ -109,9 +144,10 @@ func (uc *GreetUseCase) Execute(ctx context.Context, cmd command.GreetCommand) d
 	// Step 3: Generate greeting message from Person (pure domain logic)
 	message := person.GreetingMessage()
 
-	// Step 4: Write to console via output port (injected dependency)
-	// Context is passed to infrastructure for cancellation support
-	writeResult := uc.writer(ctx, message)
+	// Step 4: Write to console via output port (STATIC DISPATCH)
+	// The writer.Write() call is statically dispatched because W is a concrete type
+	// at instantiation time. Context is passed for cancellation support.
+	writeResult := uc.writer.Write(ctx, message)
 
 	// Step 5: Propagate result (success or failure) to caller
 	return writeResult

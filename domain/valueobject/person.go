@@ -11,7 +11,7 @@
 //   - Value objects are immutable after creation
 //   - Smart constructors enforce validation
 //   - Returns Result[T] for validation (no panics)
-//   - Pure domain logic - ZERO external dependencies
+//   - Pure domain logic - ZERO external module dependencies
 //
 // Usage:
 //

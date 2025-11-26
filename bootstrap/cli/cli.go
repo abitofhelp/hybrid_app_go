@@ -4,19 +4,31 @@
 // Description: CLI bootstrap and dependency wiring
 
 // Package cli provides the composition root for the CLI application.
-// This is where all dependencies are wired together (dependency injection).
+// This is where all dependencies are wired together via GENERIC INSTANTIATION.
 //
 // Architecture Notes:
 //   - Part of the BOOTSTRAP layer (composition root)
 //   - Depends on ALL layers to wire dependencies together
 //   - This is the ONLY place where all layers meet
-//   - Performs static dependency injection
+//   - Performs STATIC DEPENDENCY INJECTION via generics
 //   - No business logic here (only wiring)
+//   - Enables STATIC DISPATCH (compile-time method resolution)
+//
+// Static Dispatch Pattern:
+//   - Infrastructure: *adapter.ConsoleWriter implements WriterPort
+//   - Use Case: usecase.GreetUseCase[*adapter.ConsoleWriter]
+//   - Command: command.GreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]]
+//   - All method calls are resolved at compile time (no vtable)
+//
+// Mapping to Ada:
+//   - Ada: Bootstrap.CLI instantiates generic packages in declarative region
+//   - Go: Bootstrap.Run instantiates generic types with concrete parameters
+//   - Both achieve: static dispatch, compile-time resolution, zero overhead
 //
 // Dependency Wiring Flow:
-//  1. Infrastructure → Application ports (Writer adapter)
-//  2. Application → Domain (Use case with domain logic)
-//  3. Presentation → Application (CLI command with use case)
+//  1. Infrastructure → Application ports (ConsoleWriter implements WriterPort)
+//  2. Application → Domain (GreetUseCase[*ConsoleWriter] coordinates domain)
+//  3. Presentation → Application (GreetCommand[*GreetUseCase[*ConsoleWriter]])
 //  4. Main → Bootstrap (Entry point calls Run)
 //
 // Usage:
@@ -37,46 +49,62 @@ import (
 
 // Run is the composition root that wires all dependencies and executes the application.
 //
-// This function demonstrates the complete dependency injection flow:
+// This function demonstrates STATIC DEPENDENCY INJECTION via generics:
 //
-//	Step 1: Wire Infrastructure → Application ports
-//	  - Infrastructure.ConsoleWriter → Application.WriterFunc (output port)
+//	Step 1: Create Infrastructure adapter
+//	  - adapter.NewConsoleWriter() returns *adapter.ConsoleWriter
+//	  - ConsoleWriter implements WriterPort interface
 //
-//	Step 2: Wire Application use case with injected dependencies
-//	  - Application.GreetUseCase with WriterFunc (from step 1)
+//	Step 2: Instantiate Use Case with concrete type
+//	  - usecase.NewGreetUseCase[*adapter.ConsoleWriter](writer)
+//	  - Compiler knows concrete type → static dispatch
 //
-//	Step 3: Wire Presentation command with use case
-//	  - Presentation.GreetCommand with GreetUseCase.Execute (from step 2)
+//	Step 3: Instantiate Command with concrete use case type
+//	  - command.NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](uc)
+//	  - Full type chain is known at compile time
 //
 //	Step 4: Run the application
 //	  - Call GreetCommand.Run with command-line arguments
-//	  - Return exit code to caller
+//	  - All method calls are statically dispatched
+//
+// Mapping to Ada Bootstrap:
+//
+//	Ada (bootstrap-cli.adb):
+//	  package Writer_Port_Instance is new Generic_Writer(Write => Console_Writer.Write);
+//	  package Greet_UC_Instance is new Application.Usecase.Greet(Writer => Writer_Port_Instance.Write_Message);
+//	  package Greet_Cmd_Instance is new Presentation.CLI.Command.Greet(Execute => Greet_UC_Instance.Execute);
+//
+//	Go (this file):
+//	  consoleWriter := adapter.NewConsoleWriter()
+//	  greetUseCase := usecase.NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
+//	  greetCommand := command.NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](greetUseCase)
 //
 // Flow of data through the architecture:
 //
 //	1. User runs: ./greeter Alice
 //	2. Main calls Bootstrap.Run with os.Args
-//	3. Bootstrap wires all dependencies (this function)
+//	3. Bootstrap instantiates generics with concrete types (this function)
 //	4. GreetCommand parses args and extracts "Alice"
 //	5. GreetCommand creates GreetCommand DTO
-//	6. GreetCommand calls GreetUseCase.Execute(GreetCommand)
+//	6. GreetCommand calls GreetUseCase.Execute(GreetCommand) [STATIC DISPATCH]
 //	7. GreetUseCase extracts name from DTO
 //	8. GreetUseCase calls Domain.Person.CreatePerson("Alice")
 //	9. Domain validates the name
 //	10. GreetUseCase gets greeting message from Person
-//	11. GreetUseCase calls WriterFunc("Hello, Alice!")
-//	12. WriterFunc routes to ConsoleWriter (via injection)
-//	13. ConsoleWriter calls fmt.Println
-//	14. Result flows back through layers:
+//	11. GreetUseCase calls ConsoleWriter.Write("Hello, Alice!") [STATIC DISPATCH]
+//	12. ConsoleWriter.Write() writes to stdout
+//	13. Result flows back through layers:
 //	    Writer → UseCase → Command → Bootstrap → Main
-//	15. Main returns exit code to shell
+//	14. Main returns exit code to shell
 //
 // Architectural Benefits:
+//   - STATIC DISPATCH: All method calls resolved at compile time
+//   - Zero runtime overhead (no interface vtable lookups)
 //   - All layers remain independent (loose coupling)
 //   - Dependencies point inward (Dependency Rule)
-//   - Easy to swap implementations (e.g., different writer)
-//   - Testable (inject mock implementations)
-//   - Clear separation of concerns
+//   - Type safety verified at compile time
+//   - Easy to swap implementations (change generic parameters)
+//   - Testable (inject mock implementations as type parameters)
 //
 // Contract:
 //   - Pre: args is os.Args (program name + arguments)
@@ -84,31 +112,34 @@ import (
 //   - Post: Returns non-zero if application failed
 func Run(args []string) int {
 	// ========================================================================
-	// Step 1: Wire Infrastructure → Application ports
+	// Step 1: Create Infrastructure adapter
 	// ========================================================================
 
 	// DEPENDENCY INVERSION in action:
-	// - Application.Port.Outward.WriterFunc defines the interface (port)
-	// - Infrastructure.Adapter.ConsoleWriter provides implementation
-	// - We wire them together here in the composition root
+	// - Application.Port.Outward.WriterPort defines the interface (port)
+	// - Infrastructure.Adapter.ConsoleWriter implements the interface
+	// - We instantiate the concrete type here in the composition root
 	consoleWriter := adapter.NewConsoleWriter()
 
 	// ========================================================================
-	// Step 2: Wire Application use case with injected dependencies
+	// Step 2: Instantiate Use Case with concrete writer type
 	// ========================================================================
 
-	// The use case receives the Writer function through constructor injection.
-	// This is FUNCTION INJECTION - a lightweight Go pattern for dependency injection.
-	greetUseCase := usecase.NewGreetUseCase(consoleWriter)
+	// STATIC DISPATCH via generics:
+	// - GreetUseCase[*adapter.ConsoleWriter] knows the concrete writer type
+	// - All calls to writer.Write() are statically dispatched
+	// - Equivalent to Ada: package Greet_UC is new Greet(Writer => Console_Writer.Write)
+	greetUseCase := usecase.NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
 
 	// ========================================================================
-	// Step 3: Wire Presentation command with use case
+	// Step 3: Instantiate Command with concrete use case type
 	// ========================================================================
 
-	// Wire the Presentation layer to the Application layer.
-	// The command receives the Execute function from the use case.
-	// Again, function injection - zero runtime overhead.
-	greetCommand := command.NewGreetCommand(greetUseCase.Execute)
+	// STATIC DISPATCH continues through the chain:
+	// - GreetCommand knows the exact use case type
+	// - All calls to useCase.Execute() are statically dispatched
+	// - The entire call chain is resolved at compile time
+	greetCommand := command.NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](greetUseCase)
 
 	// ========================================================================
 	// Step 4: Run the application and return exit code
@@ -118,7 +149,8 @@ func Run(args []string) int {
 	// The command will:
 	//   1. Parse command-line arguments
 	//   2. Create GreetCommand DTO
-	//   3. Call the use case (which calls domain and console port)
-	//   4. Return an exit code
+	//   3. Call the use case (STATIC DISPATCH to Execute)
+	//   4. Use case calls writer (STATIC DISPATCH to Write)
+	//   5. Return an exit code
 	return greetCommand.Run(args)
 }

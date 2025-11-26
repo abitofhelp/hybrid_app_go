@@ -11,7 +11,7 @@
 // Architecture Notes:
 //   - Generic over success type T
 //   - Uses Domain.Error.ErrorType for all errors
-//   - Pure domain implementation (ZERO external dependencies)
+//   - Pure domain implementation (ZERO external module dependencies)
 //   - Enables functional composition and error propagation
 //
 // Design Pattern:

@@ -1,11 +1,11 @@
 # Software Test Guide
 
-**Project:** Hybrid_App_Ada - Ada 2022 Application Starter
+**Project:** Hybrid_App_Go - Go 1.22+ Application Starter
 **Version:** 1.0.0
-**Date:** November 18, 2025
+**Date:** November 25, 2025
 **SPDX-License-Identifier:** BSD-3-Clause
 **License File:** See the LICENSE file in the project root.
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.
+**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
 **Status:** Released
 
 ---
@@ -14,16 +14,16 @@
 
 ### 1.1 Purpose
 
-This Software Test Guide describes the testing approach, test organization, execution procedures, and guidelines for the Hybrid_App_Ada project.
+This Software Test Guide describes the testing approach, test organization, execution procedures, and guidelines for the Hybrid_App_Go project.
 
 ### 1.2 Scope
 
 This document covers:
-- Test strategy and organization (unit/integration/e2e)
-- Custom test framework design
-- Running tests via Make and direct execution
+- Test strategy and organization (unit/integration)
+- Go testing framework usage
+- Running tests via Make and go test
 - Writing new tests
-- Coverage analysis with GNATcoverage
+- Coverage analysis
 - Test maintenance procedures
 
 ---
@@ -32,37 +32,31 @@ This document covers:
 
 ### 2.1 Testing Levels
 
-Hybrid_App_Ada uses three levels of testing:
+Hybrid_App_Go uses two levels of testing:
 
-**Unit Tests** (48 tests)
+**Unit Tests** (42 assertions in 2 test functions)
 - Test individual components in isolation
-- Focus on Domain and Application logic
-- Pure functions, predictable results
+- Focus on Domain layer (pure functions)
+- Predictable, deterministic results
 - Fast execution
-- Location: `test/unit/`
+- Location: `domain/*_test.go`
 
-**Integration Tests** (26 tests)
-- Test cross-layer interactions
-- Real Infrastructure adapters
-- Application use cases with dependencies
-- Verify wiring works correctly
+**Integration Tests** (23 tests)
+- Test complete CLI application flow
+- Run actual greeter binary
+- Verify stdout, stderr, and exit codes
+- Black-box testing approach
 - Location: `test/integration/`
-
-**End-to-End Tests** (8 tests)
-- Test entire system via CLI
-- Black-box testing
-- User scenarios
-- Exit code verification
-- Location: `test/e2e/`
 
 ### 2.2 Testing Philosophy
 
-- **Test-Driven**: Tests written alongside or before code
+- **Integration-First**: CLI apps are best tested via actual execution
+- **Domain Unit Tests**: Pure functions tested in isolation
+- **No Mocks**: Integration tests run the real binary
 - **Railway-Oriented**: Test both success and error paths
 - **Comprehensive**: Cover normal, edge, and error cases
-- **Automated**: All tests runnable via `make test-all`
-- **Fast**: All 82 tests execute in < 5 seconds
-- **Self-Contained**: No external dependencies (custom framework)
+- **Automated**: All tests runnable via `make test`
+- **Fast**: All tests execute in < 3 seconds
 
 ---
 
@@ -71,100 +65,82 @@ Hybrid_App_Ada uses three levels of testing:
 ### 3.1 Directory Structure
 
 ```
-test/
-├── common/
-│   └── test_framework.ads/adb     # Custom test framework
-├── unit/
-│   ├── test_domain_error.adb      # Domain error tests
-│   ├── test_person.adb             # Person value object tests
-│   ├── test_greet_command.adb      # Application command tests
-│   ├── test_greet_usecase.adb      # Use case tests
-│   ├── unit_runner.adb             # Unit test runner
-│   └── unit_tests.gpr              # Unit tests project
-├── integration/
-│   ├── test_greet_integration.adb  # Full use case integration
-│   ├── test_console_writer.adb     # Infrastructure adapter tests
-│   ├── integration_runner.adb      # Integration test runner
-│   └── integration_tests.gpr       # Integration tests project
-└── e2e/
-    ├── test_cli_success.adb        # CLI happy path tests
-    ├── test_cli_errors.adb         # CLI error scenarios
-    ├── e2e_runner.adb              # E2E test runner
-    └── e2e_tests.gpr               # E2E tests project
+hybrid_app_go/
+|-- domain/
+|   |-- error/
+|   |   |-- result_test.go      # Result monad unit tests (19 assertions)
+|   |   |-- main_test.go        # Test runner
+|   |-- valueobject/
+|       |-- person_test.go      # Person value object tests (23 assertions)
+|       |-- main_test.go        # Test runner
+|
+|-- test/
+    |-- integration/
+        |-- greet_flow_test.go  # CLI integration tests (23 tests)
+        |-- go.mod              # Integration test module
 ```
 
 ### 3.2 Test Naming Convention
 
-- **Pattern**: `test_<component>.adb`
+- **Pattern**: `*_test.go`
+- **Test Functions**: `Test<Component>_<Scenario>` or `Test<Component>`
 - **Examples**:
-  - `test_person.adb` → Tests `Domain.Value_Object.Person`
-  - `test_greet_usecase.adb` → Tests `Application.Usecase.Greet`
-  - `test_console_writer.adb` → Tests `Infrastructure.Adapter.Console_Writer`
+  - `result_test.go` -> Tests `domain/error.Result[T]`
+  - `person_test.go` -> Tests `domain/valueobject.Person`
+  - `greet_flow_test.go` -> Tests CLI greeter flow
 
 ---
 
-## 4. Custom Test Framework
+## 4. Go Testing Framework
 
-### 4.1 Design Rationale
+### 4.1 Standard Testing
 
-Hybrid_App_Ada uses a **custom lightweight test framework** instead of AUnit:
+Hybrid_App_Go uses Go's standard `testing` package with `testify` assertions:
 
 **Benefits**:
-- No external test framework dependency
-- Simple, easy to understand (< 100 lines)
-- Full control over assertion messages
-- Educational value (see how test frameworks work)
-- Fast compilation and execution
+- Standard Go tooling
+- Rich assertion library (testify)
+- Table-driven test support
+- Parallel test execution
+- Coverage analysis built-in
 
-### 4.2 Framework API
+### 4.2 Framework Usage
 
-Located in `test/common/test_framework.{ads,adb}`:
+**Basic Test Structure**:
+```go
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
 
-```ada
--- Initialize test tracking
-procedure Start_Test_Suite (Name : String);
+func TestComponent_Scenario(t *testing.T) {
+    // Arrange
+    input := "test input"
 
--- Assert with automatic counting
-procedure Assert (
-   Condition : Boolean;
-   Test_Name : String);
+    // Act
+    result := FunctionUnderTest(input)
 
--- Report results
-procedure Report_Results (Exit_On_Failure : Boolean := True);
+    // Assert
+    assert.True(t, result.IsOk(), "should succeed with valid input")
+    assert.Equal(t, expected, result.Value(), "should have correct value")
+}
 ```
 
-### 4.3 Example Test
+### 4.3 Custom Assertion Helpers
 
-```ada
-pragma Ada_2022;
-with Test_Framework; use Test_Framework;
-with Domain.Value_Object.Person;
+The project uses a custom test helper for colored output:
 
-procedure Test_Person is
-   use Domain.Value_Object.Person;
-begin
-   Start_Test_Suite ("Person Value Object Tests");
-
-   -- Test successful creation
-   declare
-      Result : constant Person_Result.Result := Create ("Alice");
-   begin
-      Assert (Person_Result.Is_Ok (Result),
-              "Create with valid name returns Ok");
-      Assert (Get_Name (Person_Result.Value (Result)) = "Alice",
-              "Created person has correct name");
-   end;
-
-   -- Test validation error
-   declare
-      Result : constant Person_Result.Result := Create ("");
-   begin
-      Assert (Person_Result.Is_Error (Result),
-              "Create with empty name returns Error");
-   end;
-
-   Report_Results;
-end Test_Person;
+```go
+// From domain tests
+func check(t *testing.T, condition bool, format string, args ...interface{}) {
+    t.Helper()
+    if condition {
+        fmt.Printf("\033[1;92m[PASS]\033[0m %s\n", fmt.Sprintf(format, args...))
+    } else {
+        fmt.Printf("\033[1;91m[FAIL]\033[0m %s\n", fmt.Sprintf(format, args...))
+        t.Errorf(format, args...)
+    }
+}
 ```
 
 ---
@@ -174,86 +150,71 @@ end Test_Person;
 ### 5.1 Quick Start
 
 ```bash
-# Run all 82 tests
-make test-all
+# Run all tests
+make test
 
-# Run specific test level
-make test-unit          # 48 unit tests
-make test-integration   # 26 integration tests
-make test-e2e           # 8 e2e tests
+# Run domain unit tests only
+go test -v ./domain/...
+
+# Run integration tests only
+go test -v -tags=integration ./test/integration/...
 ```
 
 ### 5.2 Make Targets
 
 **Test Execution**:
 ```bash
-make test               # Alias for test-all
-make test-all           # Run all test executables
-make test-unit          # Unit tests only
-make test-integration   # Integration tests only
-make test-e2e           # E2E tests only
+make test               # Run all tests
+make test-unit          # Domain unit tests only
+make test-integration   # CLI integration tests only
+make test-coverage      # Run with coverage analysis
 ```
 
 **Build and Test**:
 ```bash
-make build build-tests  # Build main + tests
-make test-all           # Run tests
-```
-
-**Coverage**:
-```bash
-make test-coverage      # Run with GNATcoverage analysis
+make build && make test  # Build then test
+make all                 # Full build + test cycle
 ```
 
 ### 5.3 Direct Execution
 
 ```bash
-# Build tests first
-make build-tests
+# Domain unit tests
+go test -v ./domain/...
 
-# Run test runners directly
-./test/bin/unit_runner
-./test/bin/integration_runner
-./test/bin/e2e_runner
+# Integration tests (requires build tag)
+go test -v -tags=integration ./test/integration/...
 
-# Run individual test executable
-./test/bin/test_person
+# Run specific test
+go test -v -run TestGreeter_ValidName ./test/integration/...
+
+# With race detector
+go test -race ./domain/...
 ```
 
 ### 5.4 Expected Output
 
-**Success**:
+**Domain Tests**:
 ```
-========================================
-Test Suite: Person Value Object Tests
-========================================
-
-  [PASS] Create with valid name returns Ok
-  [PASS] Created person has correct name
-  [PASS] Create with empty name returns Error
-  [PASS] Error has correct kind
-  [PASS] Error has descriptive message
-
-========================================
-  Results: 5 / 5 passed
-  Status: ALL TESTS PASSED
-========================================
+=== RUN   TestDomainErrorResult
+[PASS] Ok construction - IsOk returns true
+[PASS] Ok construction - IsError returns false
+[PASS] Ok value extraction - correct value
+[PASS] Error construction - IsError returns true
+...
+--- PASS: TestDomainErrorResult (0.00s)
+PASS
 ```
 
-**Failure**:
+**Integration Tests**:
 ```
-========================================
-Test Suite: Person Value Object Tests
-========================================
-
-  [PASS] Create with valid name returns Ok
-  [FAIL] Created person has correct name
-  [PASS] Create with empty name returns Error
-
-========================================
-  Results: 2 / 3 passed
-  Status: TESTS FAILED
-========================================
+=== RUN   TestGreeter_ValidName_Success
+--- PASS: TestGreeter_ValidName_Success (0.01s)
+=== RUN   TestGreeter_EmptyName_ValidationError
+--- PASS: TestGreeter_EmptyName_ValidationError (0.01s)
+...
+PASS
+ok      github.com/abitofhelp/hybrid_app_go/test/integration    0.523s
 ```
 
 ---
@@ -262,112 +223,91 @@ Test Suite: Person Value Object Tests
 
 ### 6.1 Unit Test Template
 
-```ada
-pragma Ada_2022;
-with Test_Framework; use Test_Framework;
-with Your.Component;
+```go
+package valueobject_test
 
-procedure Test_Your_Component is
-   use Your.Component;
-begin
-   Start_Test_Suite ("Your Component Tests");
+import (
+    "testing"
+    "github.com/abitofhelp/hybrid_app_go/domain/valueobject"
+)
 
-   -- Test case 1: Success scenario
-   declare
-      Result : constant Result_Type := Some_Function (Valid_Input);
-   begin
-      Assert (Is_Ok (Result), "Valid input produces Ok result");
-   end;
+func TestYourComponent(t *testing.T) {
+    t.Run("success case", func(t *testing.T) {
+        result := valueobject.CreateThing("valid")
 
-   -- Test case 2: Error scenario
-   declare
-      Result : constant Result_Type := Some_Function (Invalid_Input);
-   begin
-      Assert (Is_Error (Result), "Invalid input produces Error result");
-   end;
+        check(t, result.IsOk(), "Valid input should return Ok")
+        check(t, result.Value().GetField() == "expected", "Field should match")
+    })
 
-   Report_Results;
-end Test_Your_Component;
+    t.Run("error case", func(t *testing.T) {
+        result := valueobject.CreateThing("")
+
+        check(t, result.IsError(), "Empty input should return Error")
+        check(t, result.ErrorInfo().Kind == domerr.ValidationError, "Should be ValidationError")
+    })
+}
 ```
 
 ### 6.2 Integration Test Template
 
-```ada
-pragma Ada_2022;
-with Test_Framework; use Test_Framework;
-with Application.Usecase.Your_UseCase;
-with Infrastructure.Adapter.Your_Adapter;
+```go
+//go:build integration
 
-procedure Test_Your_UseCase_Integration is
-   use Test_Framework;
-begin
-   Start_Test_Suite ("Your Use Case Integration Tests");
+package integration
 
-   -- Test with real infrastructure
-   declare
-      Cmd    : constant Your_Command := Make_Command ("test_data");
-      Result : constant Unit_Result.Result := Execute_UseCase (Cmd);
-   begin
-      Assert (Unit_Result.Is_Ok (Result),
-              "Use case succeeds with real adapter");
-   end;
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
 
-   Report_Results;
-end Test_Your_UseCase_Integration;
+func TestYourScenario_Description(t *testing.T) {
+    // Run the greeter binary
+    stdout, stderr, exitCode := runGreeter("input")
+
+    // Verify results
+    assert.Equal(t, 0, exitCode, "exit code should be 0")
+    assert.Equal(t, "Expected Output\n", stdout, "stdout should match")
+    assert.Empty(t, stderr, "stderr should be empty")
+}
 ```
 
-### 6.3 E2E Test Template
+### 6.3 Table-Driven Tests
 
-```ada
-pragma Ada_2022;
-with Test_Framework; use Test_Framework;
-with Ada.Command_Line;
-with Bootstrap.CLI;
+```go
+func TestGreeter_ValidNames_TableDriven(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected string
+    }{
+        {"simple name", "Alice", "Hello, Alice!\n"},
+        {"name with space", "John Doe", "Hello, John Doe!\n"},
+        {"unicode name", "Jose", "Hello, Jose!\n"},
+    }
 
-procedure Test_CLI_Scenario is
-begin
-   Start_Test_Suite ("CLI End-to-End Tests");
+    for _, tc := range tests {
+        t.Run(tc.name, func(t *testing.T) {
+            stdout, stderr, exitCode := runGreeter(tc.input)
 
-   -- Simulate CLI execution
-   declare
-      Exit_Code : Integer;
-   begin
-      -- Set up command line args
-      -- (In real tests, this would be more sophisticated)
-
-      Exit_Code := Bootstrap.CLI.Run;
-
-      Assert (Exit_Code = 0, "CLI returns success exit code");
-   end;
-
-   Report_Results;
-end Test_CLI_Scenario;
+            require.Equal(t, 0, exitCode, "exit code should be 0")
+            assert.Equal(t, tc.expected, stdout)
+            assert.Empty(t, stderr)
+        })
+    }
+}
 ```
 
-### 6.4 Adding Tests to Runners
+### 6.4 Adding Tests
 
-**Unit Test Runner** (`test/unit/unit_runner.adb`):
-```ada
-with Test_Person;
-with Test_Your_New_Component;  -- Add this
+**For Domain Tests**:
+1. Add test file in appropriate domain package
+2. Follow `*_test.go` naming
+3. Run with `go test -v ./domain/...`
 
-procedure Unit_Runner is
-begin
-   Test_Person;
-   Test_Your_New_Component;      -- Add this
-end Unit_Runner;
-```
-
-Update `test/unit/unit_tests.gpr`:
-```gprbuild
-project Unit_Tests is
-   for Main use (
-      "unit_runner.adb",
-      "test_person.adb",
-      "test_your_new_component.adb"  -- Add this
-   );
-end Unit_Tests;
-```
+**For Integration Tests**:
+1. Add test function in `test/integration/greet_flow_test.go`
+2. Use `//go:build integration` tag
+3. Run with `go test -v -tags=integration ./test/integration/...`
 
 ---
 
@@ -375,35 +315,30 @@ end Unit_Tests;
 
 ### 7.1 Coverage Goals
 
-- **Target**: > 90% line coverage
+- **Target**: > 80% line coverage for Domain layer
 - **Critical Code**: 100% coverage for error handling paths
-- **Domain Layer**: Near 100% coverage (pure functions, easy to test)
+- **Domain Layer**: High coverage (pure functions, easy to test)
 
 ### 7.2 Running Coverage Analysis
 
 ```bash
 # Generate coverage report
-make test-coverage
+go test -cover ./domain/...
 
-# Coverage data generated in coverage/ directory
+# Detailed coverage with HTML report
+go test -coverprofile=coverage.out ./domain/...
+go tool cover -html=coverage.out -o coverage.html
+
+# Via Make
+make test-coverage
 ```
 
-### 7.3 Coverage Process
+### 7.3 Coverage Output
 
-The `make test-coverage` target:
-1. Builds instrumented binaries
-2. Runs all test suites
-3. Collects coverage traces
-4. Generates HTML report
-5. Outputs summary to console
-
-### 7.4 Interpreting Results
-
-Coverage report shows:
-- Lines executed vs total
-- Branches taken
-- Functions covered
-- Per-file statistics
+```
+ok      github.com/abitofhelp/hybrid_app_go/domain/error        0.002s  coverage: 95.0% of statements
+ok      github.com/abitofhelp/hybrid_app_go/domain/valueobject  0.002s  coverage: 100.0% of statements
+```
 
 ---
 
@@ -418,8 +353,8 @@ Coverage report shows:
 
 ### 8.2 Test Quality Guidelines
 
-- **One Assertion Per Test Case**: Clear failure messages
-- **Descriptive Names**: Test names explain what's being verified
+- **Clear Names**: Test names explain what's being verified
+- **One Assertion Per Concept**: Group related assertions together
 - **Arrange-Act-Assert**: Structure tests clearly
 - **No Business Logic**: Tests should be simple
 - **Fast Execution**: Avoid slow operations
@@ -428,20 +363,82 @@ Coverage report shows:
 
 ```bash
 # Run single test for debugging
-./test/bin/test_person
+go test -v -run TestGreeter_ValidName ./test/integration/...
 
-# Add debug output (temporarily)
-Ada.Text_IO.Put_Line ("Debug: Variable = " & Variable'Image);
+# Run with verbose output
+go test -v ./domain/...
 
-# Use gdb for step-through debugging
-gdb ./test/bin/test_person
+# Run with race detector
+go test -race ./domain/...
+
+# Use delve for debugging
+dlv test ./domain/valueobject -- -test.run TestDomainValueObjectPerson
 ```
 
 ---
 
-## 9. Continuous Integration
+## 9. Integration Test Details
 
-### 9.1 CI Testing Strategy
+### 9.1 How Integration Tests Work
+
+The integration tests in `test/integration/greet_flow_test.go`:
+
+1. **TestMain**: Builds the greeter binary before tests run
+2. **runGreeter**: Executes the binary with arguments
+3. **Captures**: stdout, stderr, and exit code
+4. **Verifies**: Expected output and exit behavior
+
+```go
+func TestMain(m *testing.M) {
+    // Build the greeter binary
+    projectRoot := findProjectRoot()
+    greeterPath = filepath.Join(projectRoot, "greeter_test_binary")
+
+    cmd := exec.Command("go", "build", "-o", greeterPath, "./cmd/greeter")
+    cmd.Dir = projectRoot
+    if output, err := cmd.CombinedOutput(); err != nil {
+        panic("Failed to build greeter: " + err.Error())
+    }
+
+    // Run tests
+    code := m.Run()
+
+    // Cleanup
+    os.Remove(greeterPath)
+    os.Exit(code)
+}
+```
+
+### 9.2 runGreeter Helper
+
+```go
+func runGreeter(args ...string) (stdout, stderr string, exitCode int) {
+    cmd := exec.Command(greeterPath, args...)
+
+    var stdoutBuf, stderrBuf bytes.Buffer
+    cmd.Stdout = &stdoutBuf
+    cmd.Stderr = &stderrBuf
+
+    err := cmd.Run()
+
+    stdout = stdoutBuf.String()
+    stderr = stderrBuf.String()
+
+    if err != nil {
+        if exitErr, ok := err.(*exec.ExitError); ok {
+            exitCode = exitErr.ExitCode()
+        }
+    }
+
+    return
+}
+```
+
+---
+
+## 10. Continuous Integration
+
+### 10.1 CI Testing Strategy
 
 All tests run on every commit:
 
@@ -449,181 +446,150 @@ All tests run on every commit:
 # CI pipeline equivalent
 make clean
 make build
-make build-tests
-make test-all
+make test
 make check-arch
 ```
 
-### 9.2 Success Criteria
+### 10.2 Success Criteria
 
 All must pass:
-- ✅ Zero build warnings
-- ✅ All 82 tests pass (100% pass rate)
-- ✅ Architecture validation passes
-- ✅ Exit code 0 from test runners
+- Zero build errors
+- Zero go vet warnings
+- All domain unit tests pass (42 assertions)
+- All integration tests pass (23 tests)
+- Architecture validation passes
+- Exit code 0 from all commands
 
 ---
 
-## 10. Test Statistics
+## 11. Test Statistics
 
-### 10.1 Current Test Metrics (v1.0.0)
+### 11.1 Current Test Metrics (v1.0.0)
 
 **Test Count**:
-- Total: 82 tests
-  - Unit: 48 (58%)
-  - Integration: 26 (32%)
-  - E2E: 8 (10%)
+- Total: 25 test functions
+  - Domain Unit: 2 functions (42 assertions)
+  - Integration: 23 tests
 - Pass Rate: 100%
 
 **Coverage**:
-- Domain Layer: High (pure functions, fully tested)
-- Application Layer: High (use cases covered)
-- Infrastructure Layer: Adequate (integration tests)
-- Presentation Layer: Good (E2E tests)
-- Bootstrap Layer: Verified (E2E tests)
+- Domain/error: ~95%
+- Domain/valueobject: ~100%
 
 **Execution Time**:
-- Unit tests: < 1 second
+- Domain tests: < 0.1 seconds
 - Integration tests: < 2 seconds
-- E2E tests: < 2 seconds
-- Total: < 5 seconds (all 82 tests)
+- Total: < 3 seconds
 
 ---
 
-## 11. Common Testing Patterns
+## 12. Common Testing Patterns
 
-### 11.1 Testing Result Monads
+### 12.1 Testing Result[T] Monads
 
-```ada
--- Test success path
-declare
-   Result : constant Result_Type := Function_Under_Test (Valid_Input);
-begin
-   Assert (Result_Type.Is_Ok (Result), "Success case returns Ok");
-   Assert (Result_Type.Value (Result) = Expected_Value,
-           "Result has correct value");
-end;
+```go
+// Test success path
+t.Run("success case", func(t *testing.T) {
+    result := FunctionUnderTest(validInput)
 
--- Test error path
-declare
-   Result : constant Result_Type := Function_Under_Test (Invalid_Input);
-begin
-   Assert (Result_Type.Is_Error (Result), "Error case returns Error");
+    check(t, result.IsOk(), "Should succeed with valid input")
+    check(t, result.Value() == expected, "Should have correct value")
+})
 
-   declare
-      Err : constant Error_Type := Result_Type.Error_Info (Result);
-   begin
-      Assert (Err.Kind = Validation_Error,
-              "Error has correct kind");
-   end;
-end;
+// Test error path
+t.Run("error case", func(t *testing.T) {
+    result := FunctionUnderTest(invalidInput)
+
+    check(t, result.IsError(), "Should fail with invalid input")
+    check(t, result.ErrorInfo().Kind == domerr.ValidationError, "Should be ValidationError")
+    check(t, strings.Contains(result.ErrorInfo().Message, "expected"), "Should have descriptive message")
+})
 ```
 
-### 11.2 Testing Value Objects
+### 12.2 Testing Value Objects
 
-```ada
--- Test validation
-declare
-   Valid   : constant Result := Create ("Valid Name");
-   Invalid : constant Result := Create ("");
-begin
-   Assert (Is_Ok (Valid), "Valid input accepted");
-   Assert (Is_Error (Invalid), "Invalid input rejected");
-end;
+```go
+// Test validation
+t.Run("validation", func(t *testing.T) {
+    valid := valueobject.CreatePerson("Alice")
+    invalid := valueobject.CreatePerson("")
 
--- Test immutability (compile-time check)
--- This won't compile (good!):
--- Set_Name (Person, "New Name");  -- No setter exists
+    check(t, valid.IsOk(), "Valid input accepted")
+    check(t, invalid.IsError(), "Invalid input rejected")
+})
+
+// Test immutability (compile-time check)
+// person.name = "New" // Won't compile - unexported field
 ```
 
-### 11.3 Testing Use Cases
+### 12.3 Testing CLI Output
 
-```ada
--- Test with mock/stub adapter
-package Mock_Writer is
-   Was_Called : Boolean := False;
-   Last_Message : Unbounded_String;
+```go
+func TestGreeter_ValidName_Success(t *testing.T) {
+    stdout, stderr, exitCode := runGreeter("Alice")
 
-   function Write (Msg : String) return Unit_Result.Result is
-   begin
-      Was_Called := True;
-      Last_Message := To_Unbounded_String (Msg);
-      return Unit_Result.Ok (Unit_Value);
-   end Write;
-end Mock_Writer;
+    assert.Equal(t, 0, exitCode, "exit code should be 0")
+    assert.Equal(t, "Hello, Alice!\n", stdout, "stdout should contain greeting")
+    assert.Empty(t, stderr, "stderr should be empty")
+}
 
--- Instantiate use case with mock
-package UseCase_Under_Test is new Application.Usecase.Greet
-  (Writer => Mock_Writer.Write);
+func TestGreeter_EmptyName_ValidationError(t *testing.T) {
+    stdout, stderr, exitCode := runGreeter("")
 
--- Test
-declare
-   Cmd    : constant Greet_Command := Make_Command ("Alice");
-   Result : constant Unit_Result.Result := UseCase_Under_Test.Execute (Cmd);
-begin
-   Assert (Unit_Result.Is_Ok (Result), "Use case succeeds");
-   Assert (Mock_Writer.Was_Called, "Writer adapter was called");
-   Assert (Index (Mock_Writer.Last_Message, "Alice") > 0,
-           "Message contains name");
-end;
+    assert.Equal(t, 1, exitCode, "exit code should be 1")
+    assert.Empty(t, stdout, "stdout should be empty")
+    assert.Contains(t, stderr, "Error:", "stderr should contain error")
+}
 ```
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
-### 12.1 Common Issues
+### 13.1 Common Issues
 
-**Q: Tests fail to compile**
+**Q: Integration tests fail to build**
 
-A: Ensure you've built the main project first:
+A: Ensure you're using the build tag:
 ```bash
-make build
-make build-tests
+go test -v -tags=integration ./test/integration/...
 ```
 
-**Q: Test runner not found**
+**Q: Tests fail with "cannot find package"**
 
-A: Build tests explicitly:
+A: Update go.work to include test modules:
 ```bash
-make build-tests
-ls test/bin/
+go work sync
 ```
 
-**Q: All tests fail with similar errors**
+**Q: Integration tests hang**
 
-A: Check if test framework was updated. Rebuild all:
+A: Check if binary path is correct. The tests build from project root.
+
+**Q: Coverage doesn't include all packages**
+
+A: Specify packages explicitly:
 ```bash
-make clean
-make build build-tests
-```
-
-**Q: Coverage target fails**
-
-A: Ensure GNATcoverage runtime is built:
-```bash
-make build-coverage-runtime
-make test-coverage
+go test -coverprofile=coverage.out ./domain/...
 ```
 
 ---
 
-## 13. Future Enhancements
+## 14. Future Enhancements
 
-### 13.1 Planned Improvements (Roadmap)
+### 14.1 Planned Improvements
 
+- **Benchmark Tests**: Performance regression detection
+- **Fuzz Testing**: Go 1.18+ fuzzing for edge cases
+- **Parallel Integration Tests**: Speed up CI
 - **Property-Based Testing**: Test invariants with random inputs
-- **Mutation Testing**: Verify test suite catches bugs
-- **Performance Benchmarks**: Track performance regressions
-- **Parallel Test Execution**: Speed up test runs
-- **Test Data Builders**: Simplify test setup
 
 ---
 
 **Document Control**:
 - Version: 1.0.0
-- Last Updated: November 18, 2025
+- Last Updated: November 25, 2025
 - Status: Released
-- Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
+- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause
 - SPDX-License-Identifier: BSD-3-Clause

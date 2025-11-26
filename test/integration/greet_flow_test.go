@@ -3,122 +3,254 @@
 
 //go:build integration
 
-// Package integration provides cross-layer integration tests.
+// Package integration provides CLI integration tests.
 //
-// Integration tests verify that real components work together correctly.
-// They use real implementations (not mocks) to test complete flows.
+// Integration tests verify the complete application flow by running
+// the actual greeter binary and checking stdout, stderr, and exit codes.
 //
 // Run with: go test -v -tags=integration ./test/integration/...
+//
+// Prerequisites:
+//   - Build the greeter binary first: go build -o greeter ./cmd/greeter
 package integration
 
 import (
 	"bytes"
-	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/abitofhelp/hybrid_app_go/application/command"
-	"github.com/abitofhelp/hybrid_app_go/application/usecase"
-	domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
-	"github.com/abitofhelp/hybrid_app_go/domain/test"
-	"github.com/abitofhelp/hybrid_app_go/infrastructure/adapter"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// TestGreetFlowIntegration demonstrates integration testing pattern.
-//
-// This test uses REAL implementations across all layers:
-// - Real Domain (Person value object)
-// - Real Application (GreetUseCase)
-// - Real Infrastructure (ConsoleWriter - captured stdout)
-//
-// Per Testing Standards: Integration tests use real components,
-// mock only external services (databases, APIs, etc.)
-func TestGreetFlowIntegration(t *testing.T) {
-	tf := test.New("Integration.GreetFlow")
+// greeterPath is the path to the greeter binary.
+// Set during TestMain.
+var greeterPath string
 
-	// ========================================================================
-	// Test: Full flow with valid input
-	// ========================================================================
+// TestMain builds the greeter binary before running tests.
+func TestMain(m *testing.M) {
+	// Build the greeter binary
+	projectRoot := findProjectRoot()
+	greeterPath = filepath.Join(projectRoot, "greeter_test_binary")
 
-	// Capture stdout to verify console output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// Setup: Wire real components together (same as bootstrap)
-	// NewConsoleWriter returns a WriterFunc directly (not a struct)
-	writerFunc := adapter.NewConsoleWriter()
-	greetUseCase := usecase.NewGreetUseCase(writerFunc)
-
-	// Execute: Run use case with valid input
-	cmd := command.GreetCommand{Name: "Integration Test"}
-	result := greetUseCase.Execute(cmd)
-
-	// Restore stdout and read captured output
-	w.Close()
-	os.Stdout = oldStdout
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-
-	// Assert
-	tf.RunTest("Valid input - IsOk returns true", result.IsOk())
-	tf.RunTest("Valid input - output contains greeting",
-		strings.Contains(buf.String(), "Hello, Integration Test!"))
-
-	// ========================================================================
-	// Test: Full flow with invalid (empty) input - error propagation
-	// ========================================================================
-
-	result2 := greetUseCase.Execute(command.GreetCommand{Name: ""})
-
-	tf.RunTest("Empty input - IsError returns true", result2.IsError())
-	if result2.IsError() {
-		err := result2.ErrorInfo()
-		tf.RunTest("Empty input - error kind is ValidationError",
-			err.Kind == domerr.ValidationError)
-		tf.RunTest("Empty input - error propagates from domain",
-			strings.Contains(err.Message, "empty"))
+	cmd := exec.Command("go", "build", "-o", greeterPath, "./cmd/greeter")
+	cmd.Dir = projectRoot
+	if output, err := cmd.CombinedOutput(); err != nil {
+		panic("Failed to build greeter: " + err.Error() + "\n" + string(output))
 	}
 
-	// ========================================================================
-	// Test: Component wiring - valid scenarios
-	// ========================================================================
+	// Run tests
+	code := m.Run()
 
-	validNames := []string{"Alice", "Bob Smith", "José García"}
-	for _, name := range validNames {
-		// Suppress stdout during test
-		oldStdout = os.Stdout
-		_, w, _ = os.Pipe()
-		os.Stdout = w
+	// Cleanup
+	os.Remove(greeterPath)
 
-		wf := adapter.NewConsoleWriter()
-		uc := usecase.NewGreetUseCase(wf)
-		res := uc.Execute(command.GreetCommand{Name: name})
+	os.Exit(code)
+}
 
-		w.Close()
-		os.Stdout = oldStdout
+// findProjectRoot finds the project root directory.
+func findProjectRoot() string {
+	// Start from current directory and walk up
+	dir, _ := os.Getwd()
+	for {
+		// Check if this directory has cmd/greeter
+		if _, err := os.Stat(filepath.Join(dir, "cmd", "greeter")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	// Fallback: assume we're in test/integration
+	abs, _ := filepath.Abs(filepath.Join("..", ".."))
+	return abs
+}
 
-		tf.RunTest("Wiring test - "+name+" produces Ok", res.IsOk())
+// runGreeter executes the greeter binary with the given args.
+func runGreeter(args ...string) (stdout, stderr string, exitCode int) {
+	cmd := exec.Command(greeterPath, args...)
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err := cmd.Run()
+
+	stdout = stdoutBuf.String()
+	stderr = stderrBuf.String()
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			exitCode = -1
+		}
 	}
 
-	// ========================================================================
-	// Test: Error propagation through layers
-	// ========================================================================
+	return
+}
 
-	// Test that domain errors propagate correctly through application layer
-	wf2 := adapter.NewConsoleWriter()
-	uc := usecase.NewGreetUseCase(wf2)
+// ============================================================================
+// Valid Input Tests
+// ============================================================================
 
-	// Long name should produce validation error from domain
-	longName := strings.Repeat("x", 200)
-	res := uc.Execute(command.GreetCommand{Name: longName})
-	tf.RunTest("Long name - error propagates from domain", res.IsError())
-	if res.IsError() {
-		tf.RunTest("Long name - error kind is ValidationError",
-			res.ErrorInfo().Kind == domerr.ValidationError)
+func TestGreeter_ValidName_Success(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("Alice")
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0")
+	assert.Equal(t, "Hello, Alice!\n", stdout, "stdout should contain greeting")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+func TestGreeter_NameWithSpaces_Success(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("Bob Smith")
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0")
+	assert.Equal(t, "Hello, Bob Smith!\n", stdout, "stdout should contain full name")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+func TestGreeter_UnicodeCharacters_Success(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("José García")
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0")
+	assert.Equal(t, "Hello, José García!\n", stdout, "stdout should contain unicode name")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+func TestGreeter_SingleCharacter_Success(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("X")
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0")
+	assert.Equal(t, "Hello, X!\n", stdout, "stdout should contain single char greeting")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+func TestGreeter_MaxLengthName_Success(t *testing.T) {
+	// MaxNameLength is 100 characters
+	maxName := strings.Repeat("a", 100)
+	stdout, stderr, exitCode := runGreeter(maxName)
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0")
+	assert.Contains(t, stdout, "Hello, "+maxName+"!", "stdout should contain max length greeting")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+// ============================================================================
+// Invalid Input Tests
+// ============================================================================
+
+func TestGreeter_NoArguments_ShowsUsage(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter()
+
+	assert.Equal(t, 1, exitCode, "exit code should be 1")
+	assert.Empty(t, stdout, "stdout should be empty")
+	assert.Contains(t, stderr, "Usage:", "stderr should contain usage")
+}
+
+func TestGreeter_TooManyArguments_ShowsUsage(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("Alice", "Bob")
+
+	assert.Equal(t, 1, exitCode, "exit code should be 1")
+	assert.Empty(t, stdout, "stdout should be empty")
+	assert.Contains(t, stderr, "Usage:", "stderr should contain usage")
+}
+
+func TestGreeter_EmptyName_ValidationError(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("")
+
+	assert.Equal(t, 1, exitCode, "exit code should be 1")
+	assert.Empty(t, stdout, "stdout should be empty")
+	assert.Contains(t, stderr, "Error:", "stderr should contain error")
+	assert.Contains(t, stderr, "valid name", "stderr should mention valid name")
+}
+
+func TestGreeter_NameTooLong_ValidationError(t *testing.T) {
+	// MaxNameLength is 100, so 101 should fail
+	longName := strings.Repeat("x", 101)
+	stdout, stderr, exitCode := runGreeter(longName)
+
+	assert.Equal(t, 1, exitCode, "exit code should be 1")
+	assert.Empty(t, stdout, "stdout should be empty")
+	assert.Contains(t, stderr, "Error:", "stderr should contain error")
+}
+
+// ============================================================================
+// Edge Case Tests
+// ============================================================================
+
+func TestGreeter_WhitespaceOnlyName_ValidationError(t *testing.T) {
+	// Name with only whitespace should still be valid (preserved as-is)
+	// Based on the Ada design: "whitespace is preserved exactly as provided"
+	stdout, stderr, exitCode := runGreeter("   ")
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0 (whitespace preserved)")
+	assert.Contains(t, stdout, "Hello,    !", "stdout should contain whitespace greeting")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+func TestGreeter_SpecialCharacters_Success(t *testing.T) {
+	stdout, stderr, exitCode := runGreeter("O'Connor")
+
+	assert.Equal(t, 0, exitCode, "exit code should be 0")
+	assert.Equal(t, "Hello, O'Connor!\n", stdout, "stdout should contain special chars")
+	assert.Empty(t, stderr, "stderr should be empty")
+}
+
+// ============================================================================
+// Table-Driven Tests
+// ============================================================================
+
+func TestGreeter_ValidNames_TableDriven(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"simple name", "Alice", "Hello, Alice!\n"},
+		{"name with space", "John Doe", "Hello, John Doe!\n"},
+		{"unicode name", "北京", "Hello, 北京!\n"},
+		{"emoji name", "🎉", "Hello, 🎉!\n"},
+		{"hyphenated name", "Mary-Jane", "Hello, Mary-Jane!\n"},
+		{"name with numbers", "User123", "Hello, User123!\n"},
 	}
 
-	// Print summary
-	tf.Summary(t)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stdout, stderr, exitCode := runGreeter(tc.input)
+
+			require.Equal(t, 0, exitCode, "exit code should be 0")
+			assert.Equal(t, tc.expected, stdout)
+			assert.Empty(t, stderr)
+		})
+	}
+}
+
+func TestGreeter_InvalidInputs_TableDriven(t *testing.T) {
+	tests := []struct {
+		name           string
+		args           []string
+		expectExitCode int
+		expectInStderr string
+	}{
+		{"no args", []string{}, 1, "Usage:"},
+		{"too many args", []string{"a", "b"}, 1, "Usage:"},
+		{"empty string", []string{""}, 1, "Error:"},
+		{"name too long", []string{strings.Repeat("x", 101)}, 1, "Error:"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stdout, stderr, exitCode := runGreeter(tc.args...)
+
+			assert.Equal(t, tc.expectExitCode, exitCode)
+			assert.Empty(t, stdout)
+			assert.Contains(t, stderr, tc.expectInStderr)
+		})
+	}
 }

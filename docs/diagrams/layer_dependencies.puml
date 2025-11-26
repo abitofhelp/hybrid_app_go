@@ -1,16 +1,16 @@
-@startuml 01_layer_dependencies
+@startuml layer_dependencies
 !theme plain
 skinparam linetype ortho
 skinparam nodesep 80
 skinparam ranksep 100
 
-title Hybrid_App_Ada - 5-Layer Architecture\nHexagonal (Ports & Adapters) + Clean + DDD
+title hybrid_app_go - 5-Layer Architecture\nHexagonal (Ports & Adapters) + Clean + DDD
 
 package "Bootstrap Layer" as Bootstrap #FFEBCD {
   note right of Bootstrap
     **Composition Root**
     - Wires all dependencies
-    - Generic instantiation
+    - **Static dispatch via generics**
     - Application lifecycle
     - Can depend on ALL layers
   end note
@@ -18,7 +18,7 @@ package "Bootstrap Layer" as Bootstrap #FFEBCD {
 
 package "Presentation Layer" as Presentation #FFE4E1 {
   component "CLI" as CLI
-  component "Controllers" as Controllers
+  component "Commands" as Commands
   note right of Presentation
     **Driving Adapters**
     - User interfaces (CLI, API)
@@ -30,7 +30,7 @@ package "Presentation Layer" as Presentation #FFE4E1 {
 
 package "Infrastructure Layer" as Infrastructure #E6F3FF {
   component "Adapters" as Adapters
-  component "File System" as FileSystem
+  component "Console Writer" as ConsoleWriter
   note right of Infrastructure
     **Driven Adapters**
     - Implements Output Ports
@@ -42,7 +42,7 @@ package "Infrastructure Layer" as Infrastructure #E6F3FF {
 package "Application Layer" as Application #E8F5E9 {
   component "Use Cases" as UseCases
   component "Ports" as Ports
-  component "Application.Error" as AppError #FFFF99
+  component "application/error" as AppError #FFFF99
   note right of Application
     **Orchestration Layer**
     - Coordinates domain logic
@@ -51,19 +51,19 @@ package "Application Layer" as Application #E8F5E9 {
     - **Depends ONLY on Domain**
   end note
   note bottom of AppError
-    Re-exports Domain.Error
+    Re-exports domain/error
     for Presentation layer
   end note
 }
 
 package "Domain Layer" as Domain #FFF9E6 {
-  component "Entities" as Entities
   component "Value Objects" as VOs
-  component "Domain.Error" as DomainError
+  component "domain/error" as DomainError
+  component "Result[T]" as Result
   note right of Domain
     **Business Logic Core**
     - Pure domain concepts
-    - Zero dependencies
+    - ZERO external module deps
     - Shareable across apps
   end note
 }
@@ -74,19 +74,19 @@ Bootstrap -down-> Infrastructure : wires
 Bootstrap -down-> Application : wires
 Bootstrap -down-> Domain : wires
 
-Presentation -down-> Application : calls Input Ports\nuses Application.Error
+Presentation -down-> Application : calls Input Ports\nuses application/error
 Presentation -[hidden]down-> Domain
 
 Infrastructure -down-> Application : implements Output Ports
-Infrastructure -down-> Domain : uses Entities/VOs
+Infrastructure -down-> Domain : uses Value Objects
 
 Application -down-> Domain : orchestrates
 
 ' Critical boundaries
 note on link
   ✅ ALLOWED
-  Uses Application.Error
-  (not Domain.Error)
+  Uses application/error
+  (not domain/error)
 end note
 
 ' Forbidden dependency

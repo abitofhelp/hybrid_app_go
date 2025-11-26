@@ -1,0 +1,201 @@
+@startuml error_handling_flow
+!theme plain
+
+title Error Handling Flow\nRailway-Oriented Programming with Result[T] Monad
+
+actor User
+
+participant "Presentation\ncommand.GreetCommand" as Presentation #FFE4E1
+participant "Application\nusecase.GreetUseCase" as Application #E8F5E9
+participant "Infrastructure\nadapter.ConsoleWriter" as Infrastructure #E6F3FF
+participant "Domain\nerror.Result[T]" as Domain #FFF9E6
+
+== Happy Path (Success) ==
+
+User -> Presentation : ./greeter Alice
+activate Presentation
+
+Presentation -> Presentation : Create Command DTO
+note right
+  ```go
+  cmd := command.NewGreetCommand("Alice")
+  ctx := context.Background()
+  ```
+end note
+
+Presentation -> Application : useCase.Execute(ctx, cmd)\n[STATIC DISPATCH]
+activate Application
+
+Application -> Application : valueobject.CreatePerson(name)
+note right
+  Domain validation
+  Returns Result[Person]
+end note
+
+Application -> Infrastructure : writer.Write(ctx, "Hello, Alice!")\n[STATIC DISPATCH]
+activate Infrastructure
+
+Infrastructure -> Infrastructure : fmt.Fprintln(w, message)
+note right
+  **Panic Recovery Pattern**
+  defer/recover catches panics
+  Transforms to Result
+end note
+
+Infrastructure --> Application : domerr.Ok(model.UnitValue)
+deactivate Infrastructure
+
+Application --> Presentation : domerr.Ok(model.UnitValue)
+deactivate Application
+
+Presentation -> Presentation : result.IsOk() == true
+Presentation --> User : Exit code 0
+deactivate Presentation
+
+== Error Path (Infrastructure Failure) ==
+
+User -> Presentation : ./greeter Bob
+activate Presentation
+
+Presentation -> Application : useCase.Execute(ctx, cmd)
+activate Application
+
+Application -> Infrastructure : writer.Write(ctx, "Hello, Bob!")
+activate Infrastructure
+
+Infrastructure -> Infrastructure : fmt.Fprintln fails\nor panics
+note right #FFCCCC
+  **Exception Boundary**
+  defer/recover catches panic
+  I/O errors mapped to Result
+end note
+
+Infrastructure -> Domain : domerr.Err[model.Unit](\n  apperr.NewInfrastructureError(\n    "write failed: ..."))
+activate Domain
+
+Domain --> Infrastructure : Error(InfrastructureError)
+deactivate Domain
+
+Infrastructure --> Application : Error(InfrastructureError)
+deactivate Infrastructure
+
+Application --> Presentation : Error(InfrastructureError)
+deactivate Application
+
+Presentation -> Presentation : result.IsError() == true
+Presentation -> Presentation : Extract ErrorInfo
+note right
+  ```go
+  domErr := result.ErrorInfo()
+  // domErr.Kind, domErr.Message
+  ```
+end note
+
+Presentation -> Presentation : Pattern match ErrorKind
+note right
+  ```go
+  switch domErr.Kind {
+  case apperr.InfrastructureError:
+    fmt.Fprintln(os.Stderr,
+      "A system error occurred.")
+  }
+  ```
+end note
+
+Presentation --> User : "Error: write failed: ..."\nExit code 1
+deactivate Presentation
+
+== Error Path (Domain Validation) ==
+
+User -> Presentation : ./greeter ""
+activate Presentation
+
+Presentation -> Application : useCase.Execute(ctx, cmd)
+activate Application
+
+Application -> Domain : valueobject.CreatePerson("")
+activate Domain
+
+Domain -> Domain : Validate name\n(length > 0)
+note right #FFCCCC
+  **Domain Validation**
+  Pure function check
+  No exceptions
+  Returns Error variant
+end note
+
+Domain --> Application : Error(ValidationError)
+deactivate Domain
+
+Application --> Presentation : Error(ValidationError)
+deactivate Application
+
+Presentation -> Presentation : Extract ErrorInfo
+Presentation -> Presentation : Pattern match
+note right
+  ```go
+  switch domErr.Kind {
+  case apperr.ValidationError:
+    fmt.Fprintln(os.Stderr,
+      "Please provide a valid name.")
+  }
+  ```
+end note
+
+Presentation --> User : "Error: name cannot be empty"\nExit code 1
+deactivate Presentation
+
+== Context Cancellation Path ==
+
+User -> Presentation : ./greeter Alice\n(then Ctrl+C)
+activate Presentation
+
+Presentation -> Application : useCase.Execute(ctx, cmd)
+activate Application
+
+Application -> Infrastructure : writer.Write(ctx, message)
+activate Infrastructure
+
+Infrastructure -> Infrastructure : select {\ncase <-ctx.Done():\n  return Err\n}
+note right #FFCCCC
+  **Context Cancellation**
+  Checked before I/O
+  Returns InfrastructureError
+end note
+
+Infrastructure --> Application : Error(InfrastructureError:\n"write cancelled: context canceled")
+deactivate Infrastructure
+
+Application --> Presentation : Error(InfrastructureError)
+deactivate Application
+
+Presentation --> User : "Error: write cancelled"\nExit code 1
+deactivate Presentation
+
+legend right
+  **Error Handling Rules**
+  ════════════════════════════════════
+  1. **Domain**: Validates, returns Error variant
+  2. **Application**: Orchestrates, propagates errors
+  3. **Infrastructure**: Catches panics via defer/recover,
+     checks context, converts to Error
+  4. **Presentation**: Pattern matches errors,
+     displays user-friendly messages
+
+  **Key Patterns**
+  ════════════════════════════════════
+  • Result[T] monad (not Go error interface)
+  • Panic recovery at infrastructure boundary
+  • Context cancellation support
+  • application/error for Presentation
+  • domain/error for Infrastructure
+  • Railway-oriented programming
+
+  **Static Dispatch**
+  ════════════════════════════════════
+  • All method calls resolved at compile time
+  • Zero runtime overhead (no interface vtable)
+  • Type safety verified by compiler
+endlegend
+
+@enduml

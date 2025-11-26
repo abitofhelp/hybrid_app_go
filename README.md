@@ -7,7 +7,7 @@
 
 ## Overview
 
-A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal architecture** with **strict module boundaries** enforced via Go workspaces and **functional programming** principles using custom **domain-level Result/Option monads** (ZERO external dependencies in domain layer).
+A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal architecture** with **strict module boundaries** enforced via Go workspaces and **functional programming** principles using custom **domain-level Result/Option monads** (ZERO external module dependencies in domain layer).
 
 This is a **desktop/enterprise application template** showcasing:
 - **5-Layer Hexagonal Architecture** (Domain, Application, Infrastructure, Presentation, Bootstrap)
@@ -26,8 +26,8 @@ This is a **desktop/enterprise application template** showcasing:
 ```
 hybrid_app_go/
 ├── go.work                          # Workspace definition (manages all modules)
-├── domain/                          # Module: Pure business logic (ZERO external dependencies)
-│   └── go.mod                       # ZERO external dependencies - custom Result/Option types
+├── domain/                          # Module: Pure business logic (ZERO external module dependencies)
+│   └── go.mod                       # ZERO external module dependencies - custom Result/Option types
 ├── application/                     # Module: Use cases and ports
 │   └── go.mod                       # Depends ONLY on domain
 ├── infrastructure/                  # Module: Driven adapters
@@ -108,7 +108,7 @@ return greetCommand.Run(os.Args)
 **NO PANICS across layer boundaries.** All errors propagate via domain Result monad:
 
 ```go
-// Domain defines custom Result[T] monad (ZERO external dependencies)
+// Domain defines custom Result[T] monad (ZERO external module dependencies)
 import (
     domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
     "github.com/abitofhelp/hybrid_app_go/application/model"
@@ -219,13 +219,13 @@ Managed by Go modules (`go.mod` per module):
 testify v1.11.1    # Testing assertions (test module only, NOT domain)
 ```
 
-**Note:** Domain layer has ZERO external dependencies. Custom Result/Option monads are implemented in `domain/error/result.go` and `domain/valueobject/option.go`.
+**Note:** Domain layer has ZERO external module dependencies. Custom Result/Option monads are implemented in `domain/error/result.go` and `domain/valueobject/option.go`.
 
 ## Module Boundaries
 
 **Enforced by go.mod dependencies:**
 
-- **domain**: ZERO external dependencies (custom Result/Option types)
+- **domain**: ZERO external module dependencies (custom Result/Option types)
 - **application**: domain ONLY
 - **infrastructure**: application + domain
 - **presentation**: application ONLY (NOT domain)
@@ -381,7 +381,7 @@ This project follows:
 
 ✅ **Completed:**
 - Multi-module workspace structure with go.work
-- Custom domain Result/Option monads (ZERO external dependencies)
+- Custom domain Result/Option monads (ZERO external module dependencies)
 - Function injection dependency injection
 - Application.Error re-export pattern
 - Module boundary enforcement via go.mod

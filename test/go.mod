@@ -6,7 +6,7 @@ module github.com/abitofhelp/hybrid_app_go/test
 go 1.23
 
 // Test module - CAN have external dependencies for integration/e2e tests
-// This is separate from /src modules which must have ZERO external dependencies
+// This is separate from /src modules which must have ZERO external module dependencies
 
 require (
 	github.com/abitofhelp/hybrid_app_go/domain v0.0.0

@@ -1,0 +1,127 @@
+@startuml static_dispatch
+!theme plain
+skinparam linetype ortho
+
+title Static vs Dynamic Dispatch\nDependency Injection in Go with Generics
+
+package "Dynamic Dispatch\n(Runtime Polymorphism)" as DynamicPkg #FFE4E1 {
+  interface WriterPort <<interface>> {
+    +Write(ctx, message) Result
+  }
+
+  class ConsoleWriter {
+    +Write(ctx, message) Result
+  }
+
+  class GreetUseCase {
+    -writer WriterPort
+    +Execute(ctx, cmd) Result
+  }
+
+  ConsoleWriter .up.|> WriterPort
+  GreetUseCase o-right-> WriterPort : depends on\ninterface
+}
+
+package "Static Dispatch\n(Compile-Time Polymorphism)" as StaticPkg #E8F5E9 {
+  class "*ConsoleWriter" as StaticCW <<concrete type>> {
+    +Write(ctx, message) Result
+  }
+
+  class "GreetUseCase[W WriterPort]" as StaticGUC <<generic struct>> {
+    -writer W
+    +Execute(ctx, cmd) Result
+  }
+
+  class "Bootstrap\nInstantiation" as StaticInst <<wired at compile time>> {
+    uc := NewGreetUseCase[
+      *ConsoleWriter](writer)
+  }
+
+  StaticCW .down.> StaticInst : concrete type
+  StaticGUC .down.> StaticInst : instantiated with\nconcrete type
+}
+
+note right of GreetUseCase
+  **Runtime Cost:**
+  • Vtable lookup each call
+  • No inlining possible
+  • Interface value boxing
+
+  **Benefits:**
+  • Runtime flexibility
+  • Can swap at runtime
+end note
+
+note right of StaticGUC
+  **Compile-Time Cost:**
+  • Zero overhead
+  • Direct call (inlinable)
+  • No vtable lookup
+
+  **Trade-off:**
+  • Fixed at compile time
+  • Larger binary (monomorphization)
+end note
+
+note bottom of StaticPkg #CCFFCC
+  **This Project Uses Static Dispatch**
+
+  ```go
+  // Bootstrap instantiates with concrete types
+  writer := adapter.NewConsoleWriter()
+  uc := usecase.NewGreetUseCase[*adapter.ConsoleWriter](writer)
+  cmd := command.NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](uc)
+
+  // Compiler knows exact types
+  // All calls are statically dispatched
+  ```
+end note
+
+note bottom of DynamicPkg #FFCCCC
+  **Traditional Go Pattern (NOT used)**
+
+  ```go
+  // Interface-based injection
+  type GreetUseCase struct {
+      writer WriterPort  // interface type
+  }
+
+  // Runtime dispatch via vtable
+  func (uc *GreetUseCase) Execute(...) {
+      uc.writer.Write(...)  // vtable lookup
+  }
+  ```
+end note
+
+legend right
+  **Why Static Dispatch?**
+  ═══════════════════════════════════════
+
+  **Performance:**
+  • Zero runtime overhead
+  • Method calls can be inlined
+  • No interface value allocation
+
+  **Type Safety:**
+  • Full type checking at compile time
+  • Errors caught before runtime
+
+  **Matching Ada Pattern:**
+  • Ada uses generics for static dispatch
+  • Go generics provide equivalent pattern
+  • Same architecture, same performance
+
+  **Go Generics (1.18+)**
+  ═══════════════════════════════════════
+  ```go
+  type GreetUseCase[W WriterPort] struct {
+      writer W  // Concrete type, not interface
+  }
+
+  // W is known at instantiation:
+  //   NewGreetUseCase[*ConsoleWriter](w)
+  // Compiler generates code for *ConsoleWriter
+  ```
+endlegend
+
+@enduml
