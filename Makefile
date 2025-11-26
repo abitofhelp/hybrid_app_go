@@ -18,7 +18,7 @@ BINARY_NAME := greeter
 .PHONY: all build build-dev build-release clean clean-coverage clean-deep compress \
         deps help prereqs rebuild stats test test-all test-unit \
         test-integration test-e2e test-framework test-coverage test-coverage-threshold \
-        check check-arch lint format vet install-tools run
+        check check-arch lint format vet install-tools run diagrams
 
 # =============================================================================
 # Colors for Output
@@ -398,5 +398,14 @@ install-tools: ## Install development tools
 	@echo "  Installing golangci-lint..."
 	@$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@echo "$(GREEN)✓ Tool installation complete$(NC)"
+
+diagrams: ## Generate SVG diagrams from PlantUML sources
+	@echo "$(CYAN)Generating SVG diagrams from PlantUML...$(NC)"
+	@command -v plantuml >/dev/null 2>&1 || { echo "$(RED)Error: plantuml not found. Install with: brew install plantuml$(NC)"; exit 1; }
+	@cd docs/diagrams && for f in *.puml; do \
+		echo "  Processing $$f..."; \
+		plantuml -tsvg "$$f"; \
+	done
+	@echo "$(GREEN)✓ Diagrams generated$(NC)"
 
 .DEFAULT_GOAL := help
