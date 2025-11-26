@@ -2,7 +2,7 @@
 !theme plain
 skinparam componentStyle rectangle
 
-title hybrid_app_go - Package Structure\nActual Packages in Each Layer
+title Package Structure\nActual Packages in Each Layer
 
 frame "Bootstrap Layer" #FFEBCD {
   component "bootstrap/cli" as BootstrapCLI

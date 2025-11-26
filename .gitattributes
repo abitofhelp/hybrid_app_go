@@ -1,0 +1,92 @@
+Here’s a Go-flavored `.gitattributes` in the same spirit as your Ada one:
+
+```gitattributes
+# =============================================================================
+# Git Attributes for Go Project - GitHub Linguist Configuration
+# =============================================================================
+# This file configures how GitHub's linguist tool analyzes the repository,
+# ensuring accurate language statistics that reflect this as a Go project.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Go Source Files (Primary Language)
+# -----------------------------------------------------------------------------
+*.go linguist-language=Go
+
+# -----------------------------------------------------------------------------
+# Exclude Non-Go Files from Language Statistics
+# -----------------------------------------------------------------------------
+
+# Go module files and vendored deps
+go.mod linguist-vendored
+go.sum linguist-vendored
+vendor/** linguist-vendored
+
+# Build and project files
+Makefile linguist-vendored
+*.mk linguist-vendored
+Dockerfile linguist-vendored
+docker-compose*.yml linguist-vendored
+
+# Configuration files
+*.toml linguist-vendored
+*.yaml linguist-vendored
+*.yml linguist-vendored
+*.json linguist-vendored
+*.env linguist-vendored
+.env.* linguist-vendored
+
+# Documentation
+*.md linguist-documentation
+*.txt linguist-documentation
+*.rst linguist-documentation
+docs/** linguist-documentation
+
+# Scripts and tools
+scripts/** linguist-vendored
+tools/** linguist-vendored
+*.sh linguist-vendored
+*.ps1 linguist-vendored
+*.py linguist-vendored
+*.rb linguist-vendored
+*.pl linguist-vendored
+
+# Examples (optional: remove this line if you want examples counted)
+# examples/** linguist-documentation
+
+# Build artifacts and generated files
+bin/** linguist-generated
+dist/** linguist-generated
+coverage/** linguist-generated
+*.out linguist-generated
+*.cov linguist-generated
+*.coverprofile linguist-generated
+*.pb.go linguist-generated
+*.gen.go linguist-generated
+
+# Version control and IDE
+.git/** linguist-vendored
+.github/** linguist-vendored
+.vscode/** linguist-vendored
+.idea/** linguist-vendored
+*.code-workspace linguist-vendored
+
+# -----------------------------------------------------------------------------
+# Line Ending Configuration
+# -----------------------------------------------------------------------------
+# Ensure consistent line endings across platforms
+*.go   text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+*.sh   text eol=lf
+*.md   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.toml text eol=lf
+
+# -----------------------------------------------------------------------------
+# Diff Configuration
+# -----------------------------------------------------------------------------
+# Use Go-aware diff for Go files (requires diff "go" to be configured in .gitconfig)
+*.go diff=go
+```

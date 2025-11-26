@@ -4,7 +4,7 @@ skinparam linetype ortho
 skinparam nodesep 80
 skinparam ranksep 100
 
-title hybrid_app_go - 5-Layer Architecture\nHexagonal (Ports & Adapters) + Clean + DDD
+title 5-Layer Architecture\nHexagonal (Ports & Adapters) + Clean + DDD
 
 package "Bootstrap Layer" as Bootstrap #FFEBCD {
   note right of Bootstrap
