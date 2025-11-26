@@ -129,7 +129,11 @@ func NewGreetCommand[UC inbound.GreetPort](useCase UC) *GreetCommand[UC] {
 func (c *GreetCommand[UC]) Run(args []string) int {
 	// Check if user provided exactly one argument (the name)
 	if len(args) != 2 { // args[0] is program name, args[1] is the name
-		programName := args[0]
+		// Safely get program name (avoid panic if args is empty)
+		programName := "greeter"
+		if len(args) > 0 {
+			programName = args[0]
+		}
 		fmt.Fprintf(os.Stderr, "Usage: %s <name>\n", programName)
 		fmt.Fprintf(os.Stderr, "Example: %s Alice\n", programName)
 		return 1 // Exit code 1 indicates error

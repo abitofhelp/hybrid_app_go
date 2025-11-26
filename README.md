@@ -1,4 +1,4 @@
-# hybrid_app_go - Go Application with Strict Module Boundaries
+# Go Enterprise Starter with Hybrid DDD/Clean/Hexagonal Architecture
 
 **Version:** 1.0.0  
 **Date:** November 25, 2025  
@@ -8,6 +8,8 @@
 ## Overview
 
 A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal architecture** with **strict module boundaries** enforced via Go workspaces and **functional programming** principles using custom **domain-level Result/Option monads** (ZERO external module dependencies in domain layer).
+
+> **Starter Template:** This project serves as a **starter template for enterprise Go application development**. Use the included `scripts/brand_project/brand_project.py` script to generate a new project from this template with your own project name, module paths, and branding. See [Creating a New Project](#creating-a-new-project) below.
 
 This is a **desktop/enterprise application template** showcasing:
 - **5-Layer Hexagonal Architecture** (Domain, Application, Infrastructure, Presentation, Bootstrap)
@@ -395,6 +397,37 @@ This project follows:
 - Context propagation for cancellation/timeout support
 - Panic recovery at infrastructure boundaries
 - Concurrency-ready patterns (documented, ready for extension)
+
+## Creating a New Project
+
+This repository serves as a **starter template** for enterprise Go applications. Use the `brand_project.py` script to create a new project with your own branding:
+
+```bash
+# From the scripts directory
+cd scripts
+python3 -m brand_project \
+    --old-project hybrid_app_go \
+    --new-project my_awesome_app \
+    --old-org abitofhelp \
+    --new-org mycompany \
+    --source /path/to/hybrid_app_go \
+    --target /path/to/my_awesome_app
+```
+
+**What gets updated:**
+- Project name throughout all files
+- GitHub organization/username in module paths
+- Copyright holder information
+- All `go.mod` module paths
+- Import statements in Go source files
+- Documentation and README files
+
+**Prerequisites:**
+- Python 3.8+
+- Source template (this repository)
+- Target directory (will be created)
+
+The script auto-detects Go vs Ada projects and applies language-specific transformations.
 
 ## Learning Resources
 

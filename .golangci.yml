@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 
+version: "2"
+
 linters:
   enable:
     - errcheck       # Check error handling
-    - gofmt          # Format code
-    - goimports      # Organize imports
     - govet          # Examine Go source code
     - staticcheck    # Advanced static analysis
     - gosec          # Security issues
@@ -13,18 +13,20 @@ linters:
     - unused         # Find unused code
     - misspell       # Spelling errors
     - revive         # Fast, configurable linter
-    - gosimple       # Simplify code
-    - typecheck      # Type check code
+
+formatters:
+  enable:
+    - gofmt          # Format code
+    - goimports      # Organize imports
 
 linters-settings:
   errcheck:
     check-blank: true
     check-type-assertions: true
-  
+
   govet:
-    check-shadowing: true
     enable-all: true
-  
+
   revive:
     rules:
       - name: exported

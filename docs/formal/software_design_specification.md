@@ -1,6 +1,6 @@
 # Software Design Specification (SDS)
 
-**Project:** Hybrid_App_Go - Go 1.22+ Application Starter
+**Project:** Hybrid_App_Go - Go 1.23+ Application Starter
 **Version:** 1.0.0
 **Date:** November 25, 2025
 **SPDX-License-Identifier:** BSD-3-Clause
@@ -14,7 +14,7 @@
 
 ### 1.1 Purpose
 
-This Software Design Specification (SDS) describes the architectural design and detailed design of Hybrid_App_Go, a professional Go 1.22+ application starter demonstrating hexagonal architecture with functional programming principles.
+This Software Design Specification (SDS) describes the architectural design and detailed design of Hybrid_App_Go, a professional Go 1.23+ application starter demonstrating hexagonal architecture with functional programming principles.
 
 ### 1.2 Scope
 

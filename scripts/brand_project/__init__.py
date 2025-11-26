@@ -9,8 +9,12 @@
 brand_project - Instantiate new projects from hybrid_app/hybrid_lib templates.
 
 Usage:
-    python -m brand_project --git-repo github.com/user/my_app
-    python -m brand_project --git-repo github.com/user/my_app --dry-run
+    # From project root (recommended):
+    python3 scripts/brand_project/brand_project.py --git-repo github.com/user/my_app
+    python3 scripts/brand_project/brand_project.py --git-repo github.com/user/my_app --dry-run
+
+    # Or from scripts directory:
+    cd scripts && python3 -m brand_project --git-repo github.com/user/my_app
 
 Supported languages:
     - Go (go.mod, go.work)

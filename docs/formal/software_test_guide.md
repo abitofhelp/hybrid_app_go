@@ -1,6 +1,6 @@
 # Software Test Guide
 
-**Project:** Hybrid_App_Go - Go 1.22+ Application Starter
+**Project:** Hybrid_App_Go - Go 1.23+ Application Starter
 **Version:** 1.0.0
 **Date:** November 25, 2025
 **SPDX-License-Identifier:** BSD-3-Clause

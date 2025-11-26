@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+# ==============================================================================
+# adapters/go.py - Go language adapter for release management
+# ==============================================================================
+# Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+# SPDX-License-Identifier: BSD-3-Clause
+# See LICENSE file in the project root.
+#
+# Purpose:
+#   Go-specific adapter for release operations.
+#   Handles go.mod versioning, go build, go test, and Go-specific config.
+#
+# Design Notes:
+#   Go projects use go.mod for module information.
+#   Version is embedded via ldflags during build, not in source files.
+#   Tests use 'go test ./...' for all packages.
+#
+# ==============================================================================
+
+from pathlib import Path
+from typing import Tuple
+import re
+
+from .base import BaseReleaseAdapter
+
+
+class GoReleaseAdapter(BaseReleaseAdapter):
+    """
+    Go-specific adapter for release operations.
+
+    Handles:
+        - go.mod module information extraction
+        - Build via 'make build' or 'go build'
+        - Test via 'make test' or 'go test'
+        - No version file generation (Go uses ldflags)
+    """
+
+    @property
+    def name(self) -> str:
+        return "Go"
+
+    @staticmethod
+    def detect(project_root: Path) -> bool:
+        """
+        Detect if a directory is a Go project.
+
+        Args:
+            project_root: Path to check
+
+        Returns:
+            True if Go project detected
+        """
+        if (project_root / 'go.mod').exists():
+            return True
+        if (project_root / 'go.work').exists():
+            return True
+        if list(project_root.glob('**/*.go')):
+            return True
+        return False
+
+    def load_project_info(self, config) -> Tuple[str, str]:
+        """
+        Load project name and URL from go.mod.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            Tuple of (project_name, project_url)
+        """
+        go_mod = config.project_root / 'go.mod'
+        project_name = ""
+        project_url = ""
+
+        if go_mod.exists():
+            content = go_mod.read_text(encoding='utf-8')
+
+            # Extract module path (e.g., github.com/user/project)
+            match = re.search(r'^module\s+(\S+)', content, re.MULTILINE)
+            if match:
+                module_path = match.group(1)
+                # Extract project name from last path component
+                project_name = module_path.split('/')[-1]
+                # Convert module path to HTTPS URL
+                if module_path.startswith('github.com/'):
+                    project_url = f"https://{module_path}"
+
+        # Fallback to directory name
+        if not project_name:
+            project_name = config.project_root.name
+
+        return project_name, project_url
+
+    def update_version(self, config) -> bool:
+        """
+        Update version for Go project.
+
+        Go typically doesn't have version in source files - version is
+        injected at build time via ldflags. However, we may need to
+        update version in documentation or config files.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if successful
+        """
+        # Go projects don't typically have version in go.mod
+        # Version is injected via ldflags during build:
+        #   go build -ldflags "-X main.version=${VERSION}"
+        #
+        # We'll update any version references in README, docs, etc.
+        print(f"  Go projects use build-time version injection (ldflags)")
+        return True
+
+    def run_build(self, config) -> bool:
+        """
+        Run Go build.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if build successful
+        """
+        print("Running Go build...")
+
+        # Try make first (if Makefile exists with build target)
+        makefile = config.project_root / 'Makefile'
+        if makefile.exists():
+            # Run make clean first
+            self.run_command(['make', 'clean'], config.project_root, capture_output=True)
+
+            # Then build
+            result = self.run_command(['make', 'build'], config.project_root)
+            if result:
+                print("  Build successful (via make)")
+                return True
+
+        # Fallback to direct go build
+        result = self.run_command(
+            ['go', 'build', './...'],
+            config.project_root
+        )
+
+        if result:
+            print("  Build successful")
+            return True
+
+        print("  Build failed")
+        return False
+
+    def run_tests(self, config) -> bool:
+        """
+        Run Go tests.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if tests pass
+        """
+        print("Running Go tests...")
+
+        # Try make first (if Makefile exists with test target)
+        makefile = config.project_root / 'Makefile'
+        if makefile.exists():
+            result = self.run_command(
+                ['make', 'test'],
+                config.project_root,
+                capture_output=True
+            )
+            if result is not None:
+                print("  All tests passed (via make)")
+                return True
+
+        # Fallback to direct go test
+        # Use GOWORK=off to avoid workspace issues during release
+        import os
+        env = os.environ.copy()
+        env['GOWORK'] = 'off'
+
+        result = self.run_command(
+            ['go', 'test', './...'],
+            config.project_root,
+            capture_output=True
+        )
+
+        if result is not None:
+            print("  All tests passed")
+            return True
+
+        print("  Tests failed")
+        return False
+
+    def run_format(self, config) -> bool:
+        """
+        Run Go code formatting.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if successful
+        """
+        print("Formatting Go code...")
+
+        # Try make format first
+        makefile = config.project_root / 'Makefile'
+        if makefile.exists():
+            result = self.run_command(
+                ['make', 'format'],
+                config.project_root,
+                capture_output=True
+            )
+            if result is not None:
+                print("  Code formatted (via make)")
+                return True
+
+        # Fallback to gofmt
+        result = self.run_command(
+            ['gofmt', '-w', '.'],
+            config.project_root,
+            capture_output=True
+        )
+
+        if result is not None:
+            print("  Code formatted")
+            return True
+
+        return True  # Not fatal if formatting fails
+
+    def cleanup_temp_files(self, config) -> bool:
+        """
+        Clean up Go build artifacts.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if successful
+        """
+        print("Cleaning up temporary files...")
+
+        # Try make clean first
+        makefile = config.project_root / 'Makefile'
+        if makefile.exists():
+            result = self.run_command(
+                ['make', 'clean'],
+                config.project_root,
+                capture_output=True
+            )
+            if result is not None:
+                print("  Cleaned (via make)")
+                return True
+
+        # Fallback to go clean
+        self.run_command(
+            ['go', 'clean', '-cache'],
+            config.project_root,
+            capture_output=True
+        )
+
+        print("  Cleaned")
+        return True
+
+    def validate_makefile(self, config) -> bool:
+        """
+        Validate all key Makefile targets for Go projects.
+
+        Runs each target to ensure they all execute without errors.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if all targets work
+        """
+        makefile = config.project_root / 'Makefile'
+        if not makefile.exists():
+            print("  No Makefile found, skipping validation")
+            return True
+
+        # Key targets to validate for Go projects
+        # Ordered to avoid dependencies issues (clean first, then build-dependent)
+        targets = [
+            'help',           # Display help
+            'clean',          # Clean build artifacts
+            'build',          # Development build
+            'test',           # Run all tests
+            'vet',            # Go vet
+            'format',         # Code formatting
+            'check-arch',     # Architecture validation
+            'stats',          # Project statistics
+        ]
+
+        print("Validating Makefile targets...")
+        failed_targets = []
+
+        for target in targets:
+            result = self.run_command(
+                ['make', target],
+                config.project_root,
+                capture_output=True,
+                check=False
+            )
+            if result is None:
+                print(f"  ✗ make {target}")
+                failed_targets.append(target)
+            else:
+                print(f"  ✓ make {target}")
+
+        # Clean up after validation
+        self.run_command(['make', 'clean'], config.project_root, capture_output=True, check=False)
+
+        if failed_targets:
+            print(f"\n  Failed targets: {', '.join(failed_targets)}")
+            return False
+
+        print("  All Makefile targets validated successfully")
+        return True

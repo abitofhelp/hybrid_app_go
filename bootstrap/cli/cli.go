@@ -81,21 +81,21 @@ import (
 //
 // Flow of data through the architecture:
 //
-//	1. User runs: ./greeter Alice
-//	2. Main calls Bootstrap.Run with os.Args
-//	3. Bootstrap instantiates generics with concrete types (this function)
-//	4. GreetCommand parses args and extracts "Alice"
-//	5. GreetCommand creates GreetCommand DTO
-//	6. GreetCommand calls GreetUseCase.Execute(GreetCommand) [STATIC DISPATCH]
-//	7. GreetUseCase extracts name from DTO
-//	8. GreetUseCase calls Domain.Person.CreatePerson("Alice")
-//	9. Domain validates the name
-//	10. GreetUseCase gets greeting message from Person
-//	11. GreetUseCase calls ConsoleWriter.Write("Hello, Alice!") [STATIC DISPATCH]
-//	12. ConsoleWriter.Write() writes to stdout
-//	13. Result flows back through layers:
-//	    Writer → UseCase → Command → Bootstrap → Main
-//	14. Main returns exit code to shell
+//  1. User runs: ./greeter Alice
+//  2. Main calls Bootstrap.Run with os.Args
+//  3. Bootstrap instantiates generics with concrete types (this function)
+//  4. GreetCommand parses args and extracts "Alice"
+//  5. GreetCommand creates GreetCommand DTO
+//  6. GreetCommand calls GreetUseCase.Execute(GreetCommand) [STATIC DISPATCH]
+//  7. GreetUseCase extracts name from DTO
+//  8. GreetUseCase calls Domain.Person.CreatePerson("Alice")
+//  9. Domain validates the name
+//  10. GreetUseCase gets greeting message from Person
+//  11. GreetUseCase calls ConsoleWriter.Write("Hello, Alice!") [STATIC DISPATCH]
+//  12. ConsoleWriter.Write() writes to stdout
+//  13. Result flows back through layers:
+//     Writer → UseCase → Command → Bootstrap → Main
+//  14. Main returns exit code to shell
 //
 // Architectural Benefits:
 //   - STATIC DISPATCH: All method calls resolved at compile time

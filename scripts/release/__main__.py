@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # ==============================================================================
-# brand_project/__main__.py - Module entry point
+# release/__main__.py - Module entry point
 # ==============================================================================
 # Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 # SPDX-License-Identifier: BSD-3-Clause
 # ==============================================================================
 
 """
-Entry point for running brand_project as a module.
+Entry point for running release as a module.
 
 Usage (from scripts directory):
-    cd scripts && python3 -m brand_project --git-repo github.com/user/my_app
+    cd scripts && python3 -m release prepare 1.0.0
+    cd scripts && python3 -m release release 1.0.0
 
 Or run directly from project root (recommended):
-    python3 scripts/brand_project/brand_project.py --git-repo github.com/user/my_app
+    python3 scripts/release/release.py prepare 1.0.0
 """
 
-from .brand_project import main
+from .release import main
 
 if __name__ == '__main__':
     main()

@@ -61,7 +61,7 @@ all: build
 
 help: ## Display this help message
 	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════╗$(NC)"
-	@echo "$(CYAN)$(BOLD)║  Hybrid App - Go 1.21+                           ║$(NC)"
+	@echo "$(CYAN)$(BOLD)║  Hybrid App - Go 1.23+                           ║$(NC)"
 	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════╝$(NC)"
 	@echo " "
 	@echo "$(YELLOW)Build Commands:$(NC)"
@@ -337,7 +337,7 @@ check-arch: ## Validate hexagonal architecture boundaries
 lint:
 	@echo "$(GREEN)Running golangci-lint...$(NC)"
 	@if command -v $(GOLINT) >/dev/null 2>&1; then \
-		$(GOLINT) run ./...; \
+		$(GOLINT) run ./domain/... ./application/... ./infrastructure/... ./presentation/... ./bootstrap/...; \
 		echo "$(GREEN)✓ Linting complete$(NC)"; \
 	else \
 		echo "$(YELLOW)⚠ golangci-lint not installed (run 'make install-tools')$(NC)"; \
@@ -345,7 +345,7 @@ lint:
 
 vet:
 	@echo "$(GREEN)Running go vet...$(NC)"
-	@$(GO) vet ./...
+	@$(GO) vet ./domain/... ./application/... ./infrastructure/... ./presentation/... ./bootstrap/...
 	@echo "$(GREEN)✓ Vet complete$(NC)"
 
 format:

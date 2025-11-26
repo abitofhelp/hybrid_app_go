@@ -37,7 +37,7 @@ package valueobject
 //	    value := opt.Value()
 //	}
 type Option[T any] struct {
-	value   T
+	value  T
 	isSome bool
 }
 

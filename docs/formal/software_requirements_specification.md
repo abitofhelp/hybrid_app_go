@@ -1,6 +1,6 @@
 # Software Requirements Specification (SRS)
 
-**Project:** Hybrid_App_Go - Go 1.22+ Application Starter
+**Project:** Hybrid_App_Go - Go 1.23+ Application Starter
 **Version:** 1.0.0
 **Date:** November 25, 2025
 **SPDX-License-Identifier:** BSD-3-Clause
@@ -14,7 +14,7 @@
 
 ### 1.1 Purpose
 
-This Software Requirements Specification (SRS) describes the functional and non-functional requirements for Hybrid_App_Go, a professional Go 1.22+ application starter template demonstrating hexagonal architecture with functional programming principles.
+This Software Requirements Specification (SRS) describes the functional and non-functional requirements for Hybrid_App_Go, a professional Go 1.23+ application starter template demonstrating hexagonal architecture with functional programming principles.
 
 ### 1.2 Scope
 
@@ -41,7 +41,7 @@ Hybrid_App_Go provides:
 
 ### 1.4 References
 
-- Go 1.22 Language Specification
+- Go 1.23 Language Specification
 - Clean Architecture (Robert C. Martin)
 - Domain-Driven Design (Eric Evans)
 - Railway-Oriented Programming (Scott Wlaschin)
@@ -83,7 +83,7 @@ Hybrid_App_Go is a standalone application starter template implementing professi
 ### 2.4 Operating Environment
 
 - **Platforms**: Linux, macOS, BSD, Windows
-- **Go Version**: Go 1.22+ (generics with type inference)
+- **Go Version**: Go 1.23+ (generics with type inference)
 - **Build System**: go build, make
 - **Testing**: go test, testify
 
@@ -307,7 +307,7 @@ Hybrid_App_Go is a standalone application starter template implementing professi
 
 - NFR-03.1: Support POSIX platforms (Linux, macOS, BSD)
 - NFR-03.2: Support Windows
-- NFR-03.3: Standard Go 1.22 (no CGO dependencies)
+- NFR-03.3: Standard Go 1.23 (no CGO dependencies)
 - NFR-03.4: go.work compatible project structure
 - NFR-03.5: No platform-specific code in Domain/Application
 
@@ -357,7 +357,7 @@ Hybrid_App_Go is a standalone application starter template implementing professi
 
 ### 5.1 Technical Constraints
 
-- **SC-01**: Must compile with Go 1.22+
+- **SC-01**: Must compile with Go 1.23+
 - **SC-02**: Must use Go generics for static dispatch
 - **SC-03**: Must be go.work compatible
 - **SC-04**: Uses testify for test assertions

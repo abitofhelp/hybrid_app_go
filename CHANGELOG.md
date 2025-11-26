@@ -1,6 +1,6 @@
 # Changelog
 
-**Project:** Hybrid_App_Go - Go 1.22+ Application Starter
+**Project:** Hybrid_App_Go - Go 1.23+ Application Starter
 **SPDX-License-Identifier:** BSD-3-Clause
 **License File:** See the LICENSE file in the project root.
 **Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2025-11-25
 
-_First stable release - Professional Go 1.22+ application starter template demonstrating hybrid DDD/Clean/Hexagonal architecture with functional programming principles._
+_First stable release - Professional Go 1.23+ application starter template demonstrating hybrid DDD/Clean/Hexagonal architecture with functional programming principles._
 
 ### Added
 
@@ -159,7 +159,7 @@ person := result.Value()
 
 ### Compatibility
 
-- **Go Version**: 1.22+ (generics with type inference)
+- **Go Version**: 1.23+ (generics with type inference)
 - **Platforms**: Linux, macOS, BSD, Windows
 - **Dependencies**: testify (test only)
 
