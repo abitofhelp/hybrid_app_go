@@ -20,11 +20,30 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/abitofhelp/hybrid_app_go/domain/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Test tracking for summary.
+var (
+	testCount   int32
+	passedCount int32
+)
+
+// registerTest tracks a test and its outcome for the final summary.
+// Call at the start of each test function or subtest.
+func registerTest(t *testing.T) {
+	atomic.AddInt32(&testCount, 1)
+	t.Cleanup(func() {
+		if !t.Failed() {
+			atomic.AddInt32(&passedCount, 1)
+		}
+	})
+}
 
 // greeterPath is the path to the greeter binary.
 // Set during TestMain.
@@ -47,6 +66,11 @@ func TestMain(m *testing.M) {
 
 	// Cleanup
 	os.Remove(greeterPath)
+
+	// Print summary banner
+	test.PrintCategorySummary("INTEGRATION TESTS",
+		int(atomic.LoadInt32(&testCount)),
+		int(atomic.LoadInt32(&passedCount)))
 
 	os.Exit(code)
 }
@@ -100,6 +124,7 @@ func runGreeter(args ...string) (stdout, stderr string, exitCode int) {
 // ============================================================================
 
 func TestGreeter_ValidName_Success(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("Alice")
 
 	assert.Equal(t, 0, exitCode, "exit code should be 0")
@@ -108,6 +133,7 @@ func TestGreeter_ValidName_Success(t *testing.T) {
 }
 
 func TestGreeter_NameWithSpaces_Success(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("Bob Smith")
 
 	assert.Equal(t, 0, exitCode, "exit code should be 0")
@@ -116,6 +142,7 @@ func TestGreeter_NameWithSpaces_Success(t *testing.T) {
 }
 
 func TestGreeter_UnicodeCharacters_Success(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("José García")
 
 	assert.Equal(t, 0, exitCode, "exit code should be 0")
@@ -124,6 +151,7 @@ func TestGreeter_UnicodeCharacters_Success(t *testing.T) {
 }
 
 func TestGreeter_SingleCharacter_Success(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("X")
 
 	assert.Equal(t, 0, exitCode, "exit code should be 0")
@@ -132,6 +160,7 @@ func TestGreeter_SingleCharacter_Success(t *testing.T) {
 }
 
 func TestGreeter_MaxLengthName_Success(t *testing.T) {
+	registerTest(t)
 	// MaxNameLength is 100 characters
 	maxName := strings.Repeat("a", 100)
 	stdout, stderr, exitCode := runGreeter(maxName)
@@ -146,6 +175,7 @@ func TestGreeter_MaxLengthName_Success(t *testing.T) {
 // ============================================================================
 
 func TestGreeter_NoArguments_ShowsUsage(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter()
 
 	assert.Equal(t, 1, exitCode, "exit code should be 1")
@@ -154,6 +184,7 @@ func TestGreeter_NoArguments_ShowsUsage(t *testing.T) {
 }
 
 func TestGreeter_TooManyArguments_ShowsUsage(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("Alice", "Bob")
 
 	assert.Equal(t, 1, exitCode, "exit code should be 1")
@@ -162,6 +193,7 @@ func TestGreeter_TooManyArguments_ShowsUsage(t *testing.T) {
 }
 
 func TestGreeter_EmptyName_ValidationError(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("")
 
 	assert.Equal(t, 1, exitCode, "exit code should be 1")
@@ -171,6 +203,7 @@ func TestGreeter_EmptyName_ValidationError(t *testing.T) {
 }
 
 func TestGreeter_NameTooLong_ValidationError(t *testing.T) {
+	registerTest(t)
 	// MaxNameLength is 100, so 101 should fail
 	longName := strings.Repeat("x", 101)
 	stdout, stderr, exitCode := runGreeter(longName)
@@ -185,6 +218,7 @@ func TestGreeter_NameTooLong_ValidationError(t *testing.T) {
 // ============================================================================
 
 func TestGreeter_WhitespaceOnlyName_ValidationError(t *testing.T) {
+	registerTest(t)
 	// Name with only whitespace should still be valid (preserved as-is)
 	// Based on the Ada design: "whitespace is preserved exactly as provided"
 	stdout, stderr, exitCode := runGreeter("   ")
@@ -195,6 +229,7 @@ func TestGreeter_WhitespaceOnlyName_ValidationError(t *testing.T) {
 }
 
 func TestGreeter_SpecialCharacters_Success(t *testing.T) {
+	registerTest(t)
 	stdout, stderr, exitCode := runGreeter("O'Connor")
 
 	assert.Equal(t, 0, exitCode, "exit code should be 0")
@@ -222,6 +257,7 @@ func TestGreeter_ValidNames_TableDriven(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			registerTest(t)
 			stdout, stderr, exitCode := runGreeter(tc.input)
 
 			require.Equal(t, 0, exitCode, "exit code should be 0")
@@ -246,6 +282,7 @@ func TestGreeter_InvalidInputs_TableDriven(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			registerTest(t)
 			stdout, stderr, exitCode := runGreeter(tc.args...)
 
 			assert.Equal(t, tc.expectExitCode, exitCode)

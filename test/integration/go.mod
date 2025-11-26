@@ -2,7 +2,10 @@ module github.com/abitofhelp/hybrid_app_go/test/integration
 
 go 1.23
 
-require github.com/stretchr/testify v1.9.0
+require (
+	github.com/abitofhelp/hybrid_app_go/domain v0.0.0-20251126012634-e3c711044dd2
+	github.com/stretchr/testify v1.9.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

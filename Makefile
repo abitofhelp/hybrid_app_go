@@ -115,12 +115,12 @@ build: build-dev
 
 build-dev: check-arch prereqs
 	@echo "$(GREEN)Building $(PROJECT_NAME) (development mode)...$(NC)"
-	@cd $(BIN_DIR) && $(GO) build -race -v
+	@cd $(BIN_DIR) && $(GO) build -race
 	@echo "$(GREEN)✓ Development build complete: $(BIN_DIR)/$(BINARY_NAME)$(NC)"
 
 build-release: check-arch prereqs
 	@echo "$(GREEN)Building $(PROJECT_NAME) (release mode)...$(NC)"
-	@cd $(BIN_DIR) && $(GO) build -ldflags="-s -w" -v
+	@cd $(BIN_DIR) && $(GO) build -ldflags="-s -w"
 	@echo "$(GREEN)✓ Release build complete: $(BIN_DIR)/$(BINARY_NAME)$(NC)"
 
 run: build
@@ -171,9 +171,28 @@ rebuild: clean build
 test: test-all
 
 test-all: check-arch
-	@echo "$(GREEN)Running all tests (co-located)...$(NC)"
+	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(CYAN)$(BOLD)║                    RUNNING ALL TESTS                         ║$(NC)"
+	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(YELLOW)  UNIT TESTS (Domain Layer)$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	@$(GO) test -v ./domain/... ./application/... ./infrastructure/... ./presentation/... ./bootstrap/...
-	@echo "$(GREEN)✓ All co-located tests passed$(NC)"
+	@echo ""
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(YELLOW)  INTEGRATION TESTS$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@$(GO) test -v -tags=integration ./test/integration/...
+	@echo ""
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@echo "$(YELLOW)  E2E TESTS$(NC)"
+	@echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@$(GO) test -v -tags=e2e ./test/e2e/...
+	@echo ""
+	@echo "$(GREEN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)$(BOLD)║  ✓ ALL TESTS PASSED                                          ║$(NC)"
+	@echo "$(GREEN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
 
 test-unit: check-arch ## Run unit tests with Ada-style framework output
 	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
