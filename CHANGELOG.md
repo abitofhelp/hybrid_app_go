@@ -21,7 +21,7 @@ _First stable release - Professional Go 1.22+ application starter template demon
 #### Architecture
 - **5-Layer Hexagonal Architecture**: Domain, Application, Infrastructure, Presentation, Bootstrap
 - **Static Dispatch via Generics**: Zero-overhead dependency injection using Go generics
-- **Port Abstraction**: Inward (GreetPort) and Outward (WriterPort) port interfaces
+- **Port Abstraction**: Inbound (GreetPort) and Outbound (WriterPort) port interfaces
 - **Architecture Guard**: Python script (arch_guard.py) for automated boundary validation
 - **Context Support**: context.Context for cancellation and deadline propagation
 

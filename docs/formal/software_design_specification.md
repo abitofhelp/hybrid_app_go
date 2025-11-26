@@ -104,8 +104,8 @@ Hybrid_App_Go uses **Hexagonal Architecture** (Ports and Adapters / Clean Archit
   - Use Cases: `application/usecase/greet.go`
   - Commands: `application/command/greet.go`
   - Models: `application/model/unit.go`
-  - Inbound Ports: `application/port/inward/greet.go`
-  - Outbound Ports: `application/port/outward/writer.go`
+  - Inbound Ports: `application/port/inbound/greet.go`
+  - Outbound Ports: `application/port/outbound/writer.go`
   - Error Re-export: `application/error/error.go`
 - **Rules**:
   - Stateless use cases
@@ -229,11 +229,11 @@ func (r Result[T]) UnwrapOr(defaultVal T) T
 **application/usecase/greet.go** (Generic):
 ```go
 // GreetUseCase is generic over WriterPort for static dispatch
-type GreetUseCase[W outward.WriterPort] struct {
+type GreetUseCase[W outbound.WriterPort] struct {
     writer W
 }
 
-func NewGreetUseCase[W outward.WriterPort](writer W) *GreetUseCase[W] {
+func NewGreetUseCase[W outbound.WriterPort](writer W) *GreetUseCase[W] {
     return &GreetUseCase[W]{writer: writer}
 }
 
@@ -345,11 +345,11 @@ func (cw *ConsoleWriter) Write(ctx context.Context, message string) (result dome
 **presentation/cli/command/greet.go** (Generic):
 ```go
 // GreetCommand is generic over GreetPort for static dispatch
-type GreetCommand[UC inward.GreetPort] struct {
+type GreetCommand[UC inbound.GreetPort] struct {
     useCase UC
 }
 
-func NewGreetCommand[UC inward.GreetPort](useCase UC) *GreetCommand[UC] {
+func NewGreetCommand[UC inbound.GreetPort](useCase UC) *GreetCommand[UC] {
     return &GreetCommand[UC]{useCase: useCase}
 }
 

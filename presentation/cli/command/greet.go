@@ -22,7 +22,7 @@
 //   - Equivalent to Ada's generic package instantiation
 //
 // Dependency Flow (all pointing INWARD):
-//   - GreetCommand[UC] -> application.port.inward.GreetPort (interface constraint)
+//   - GreetCommand[UC] -> application.port.inbound.GreetPort (interface constraint)
 //   - GreetCommand[UC] -> application.Error (re-exported from domain)
 //   - GreetCommand[UC] -> application.Command (DTOs)
 //
@@ -53,7 +53,7 @@ import (
 
 	"github.com/abitofhelp/hybrid_app_go/application/command"
 	apperr "github.com/abitofhelp/hybrid_app_go/application/error"
-	"github.com/abitofhelp/hybrid_app_go/application/port/inward"
+	"github.com/abitofhelp/hybrid_app_go/application/port/inbound"
 )
 
 // GreetCommand is a CLI command handler for the greet use case.
@@ -77,7 +77,7 @@ import (
 //   - Coordinates UI concerns
 //   - Generic over port abstraction (static dispatch)
 //   - Returns exit code for shell
-type GreetCommand[UC inward.GreetPort] struct {
+type GreetCommand[UC inbound.GreetPort] struct {
 	useCase UC
 }
 
@@ -93,7 +93,7 @@ type GreetCommand[UC inward.GreetPort] struct {
 // Mapping to Ada:
 //   - Ada: package Greet_Command_Instance is new Presentation.CLI.Command.Greet(Execute_Greet_UseCase => Greet_UC.Execute);
 //   - Go: cmd := NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](uc)
-func NewGreetCommand[UC inward.GreetPort](useCase UC) *GreetCommand[UC] {
+func NewGreetCommand[UC inbound.GreetPort](useCase UC) *GreetCommand[UC] {
 	return &GreetCommand[UC]{useCase: useCase}
 }
 

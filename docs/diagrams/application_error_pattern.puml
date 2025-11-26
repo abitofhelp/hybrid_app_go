@@ -27,7 +27,7 @@ package "Application Layer" as Application #E8F5E9 {
     Zero overhead (type aliases)
   }
 
-  class "application/port/outward" as Writer {
+  class "application/port/outbound" as Writer {
     + WriterPort : interface
     + Write(ctx, message) : Result[Unit]
     --

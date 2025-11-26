@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
-// Package: inward
+// Package: inbound
 // Description: Input port for greet use case
 
-// Package inward defines input (driving/primary) ports - interfaces that
+// Package inbound defines input (driving/primary) ports - interfaces that
 // the application layer EXPOSES and the presentation layer CALLS.
 //
 // Architecture Notes:
@@ -27,9 +27,9 @@
 //
 // Usage:
 //
-//	import "github.com/abitofhelp/hybrid_app_go/application/port/inward"
+//	import "github.com/abitofhelp/hybrid_app_go/application/port/inbound"
 //
-//	type GreetCommand[UC inward.GreetPort] struct {
+//	type GreetCommand[UC inbound.GreetPort] struct {
 //	    useCase UC  // Concrete type known at compile time
 //	}
 //
@@ -37,7 +37,7 @@
 //	    result := c.useCase.Execute(ctx, cmd)  // Static dispatch
 //	    // ...
 //	}
-package inward
+package inbound
 
 import (
 	"context"

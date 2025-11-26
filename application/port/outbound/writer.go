@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
-// Package: outward
+// Package: outbound
 // Description: Output port for writing operations
 
-// Package outward defines output (driven/secondary) ports - interfaces that
+// Package outbound defines output (driven/secondary) ports - interfaces that
 // the application layer NEEDS and the infrastructure layer IMPLEMENTS.
 //
 // Architecture Notes:
@@ -27,9 +27,9 @@
 //
 // Usage:
 //
-//	import "github.com/abitofhelp/hybrid_app_go/application/port/outward"
+//	import "github.com/abitofhelp/hybrid_app_go/application/port/outbound"
 //
-//	type GreetUseCase[W outward.WriterPort] struct {
+//	type GreetUseCase[W outbound.WriterPort] struct {
 //	    writer W  // Concrete type known at compile time
 //	}
 //
@@ -37,7 +37,7 @@
 //	    result := uc.writer.Write(ctx, "Hello, World!")  // Static dispatch
 //	    return result
 //	}
-package outward
+package outbound
 
 import (
 	"context"

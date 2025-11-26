@@ -22,7 +22,7 @@
 //
 // Dependency Flow (all pointing INWARD toward Domain):
 //   - GreetUseCase[W] -> domain.Person (coordinates)
-//   - GreetUseCase[W] -> application.port.outward.WriterPort (interface constraint)
+//   - GreetUseCase[W] -> application.port.outbound.WriterPort (interface constraint)
 //   - infrastructure.ConsoleWriter -> WriterPort (implements)
 //   - Bootstrap instantiates GreetUseCase[*ConsoleWriter]
 //
@@ -48,7 +48,7 @@ import (
 
 	"github.com/abitofhelp/hybrid_app_go/application/command"
 	"github.com/abitofhelp/hybrid_app_go/application/model"
-	"github.com/abitofhelp/hybrid_app_go/application/port/outward"
+	"github.com/abitofhelp/hybrid_app_go/application/port/outbound"
 	domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
 	"github.com/abitofhelp/hybrid_app_go/domain/valueobject"
 )
@@ -75,8 +75,8 @@ import (
 //   - Generic over port abstraction (static dispatch)
 //   - Returns Result for functional error handling
 //
-// Implements: inward.GreetPort interface
-type GreetUseCase[W outward.WriterPort] struct {
+// Implements: inbound.GreetPort interface
+type GreetUseCase[W outbound.WriterPort] struct {
 	writer W
 }
 
@@ -92,7 +92,7 @@ type GreetUseCase[W outward.WriterPort] struct {
 // Mapping to Ada:
 //   - Ada: package Greet_UC is new Application.Usecase.Greet(Writer => Console_Writer.Write);
 //   - Go: uc := NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
-func NewGreetUseCase[W outward.WriterPort](writer W) *GreetUseCase[W] {
+func NewGreetUseCase[W outbound.WriterPort](writer W) *GreetUseCase[W] {
 	return &GreetUseCase[W]{writer: writer}
 }
 

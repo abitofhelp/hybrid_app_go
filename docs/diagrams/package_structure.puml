@@ -27,7 +27,7 @@ frame "Presentation Layer" #FFE4E1 {
   note right of PresentationGreet
     **Depends on:**
     - application/command
-    - application/port/inward
+    - application/port/inbound
     - **application/error** ✅
 
     **Cannot access:**
@@ -42,7 +42,7 @@ frame "Infrastructure Layer" #E6F3FF {
   component "infrastructure/adapter" as InfraConsole
   note right of InfraConsole
     **Depends on:**
-    - application/port/outward
+    - application/port/outbound
     - domain/error (direct) ✅
     - application/model
 
@@ -55,8 +55,8 @@ frame "Application Layer" #E8F5E9 {
   component "application/error" as AppError #FFFF99
   component "application/command" as AppCommand
   component "application/usecase" as AppUsecase
-  component "application/port/outward" as AppOutward
-  component "application/port/inward" as AppInward
+  component "application/port/outbound" as AppOutbound
+  component "application/port/inbound" as AppInbound
   component "application/model" as AppModel
 
   note right of AppError
@@ -89,16 +89,16 @@ frame "Domain Layer" #FFF9E6 {
 
 ' Dependencies (center-seeking - all point inward)
 PresentationGreet -down-> AppCommand : uses DTO
-PresentationGreet -down-> AppInward : uses GreetPort
+PresentationGreet -down-> AppInbound : uses GreetPort
 PresentationGreet -down-> AppError : uses ✅
 
-InfraConsole -down-> AppOutward : implements WriterPort
+InfraConsole -down-> AppOutbound : implements WriterPort
 InfraConsole -down-> DomainError : uses ✅
 
 AppCommand -down-> DomainPerson : uses
 AppUsecase -down-> DomainPerson : validates
-AppOutward -down-> DomainResult : uses
-AppInward -down-> DomainResult : uses
+AppOutbound -down-> DomainResult : uses
+AppInbound -down-> DomainResult : uses
 AppError -down-> DomainError : re-exports
 
 ' Forbidden dependency (shown as violation)
