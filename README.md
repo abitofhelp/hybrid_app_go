@@ -1,9 +1,9 @@
 # hybrid_app_go - Go Application with Strict Module Boundaries
 
 **Version:** 1.0.0  
-**Date:** November 20, 2025  
+**Date:** November 25, 2025  
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.  
-**License:** BSD-3-Clause
+**License:** BSD-3-Clause  
 
 ## Overview
 
@@ -12,7 +12,7 @@ A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal arc
 This is a **desktop/enterprise application template** showcasing:
 - **5-Layer Hexagonal Architecture** (Domain, Application, Infrastructure, Presentation, Bootstrap)
 - **Strict Module Boundaries** via go.work and separate go.mod per layer
-- **Function Injection Dependency Injection** (lightweight Go pattern)
+- **Static Dispatch via Generics** (zero-overhead dependency injection)
 - **Railway-Oriented Programming** with Result monads (no panics across boundaries)
 - **Presentation Isolation** pattern (only Domain is shareable across apps)
 - **Multi-Module Workspace** (compiler-enforced boundaries)
@@ -59,49 +59,54 @@ hybrid_app_go/
 
 ### Dependency Injection Pattern
 
-**Go (Function Injection)**:
+**Go (Static Dispatch via Generics)**:
 ```go
 import (
     "context"
     domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
     "github.com/abitofhelp/hybrid_app_go/application/model"
+    "github.com/abitofhelp/hybrid_app_go/application/port/outbound"
 )
 
-type WriterFunc func(ctx context.Context, message string) domerr.Result[model.Unit]
-
-type GreetUseCase struct {
-    writer WriterFunc
+// Port interface defines the contract
+type WriterPort interface {
+    Write(ctx context.Context, message string) domerr.Result[model.Unit]
 }
 
-func NewGreetUseCase(writer WriterFunc) *GreetUseCase {
-    return &GreetUseCase{writer: writer}
+// Generic use case with interface constraint
+type GreetUseCase[W outbound.WriterPort] struct {
+    writer W
 }
 
-func (uc *GreetUseCase) Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit] {
-    // Use uc.writer(ctx, message)
+func NewGreetUseCase[W outbound.WriterPort](writer W) *GreetUseCase[W] {
+    return &GreetUseCase[W]{writer: writer}
+}
+
+func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit] {
+    // uc.writer.Write() is statically dispatched - compiler knows exact type
 }
 ```
 
 **Wiring in Bootstrap:**
 ```go
-// Step 1: Wire Infrastructure → Port
+// Step 1: Create Infrastructure adapter (concrete type)
 consoleWriter := adapter.NewConsoleWriter()
 
-// Step 2: Wire Use Case → Port
-greetUseCase := usecase.NewGreetUseCase(consoleWriter)
+// Step 2: Instantiate Use Case with concrete type parameter
+greetUseCase := usecase.NewGreetUseCase[*adapter.ConsoleWriter](consoleWriter)
 
-// Step 3: Wire Command → Use Case
-greetCommand := command.NewGreetCommand(greetUseCase.Execute)
+// Step 3: Instantiate Command with concrete use case type
+greetCommand := command.NewGreetCommand[*usecase.GreetUseCase[*adapter.ConsoleWriter]](greetUseCase)
 
-// Step 4: Run
+// Step 4: Run - all method calls are statically dispatched
 return greetCommand.Run(os.Args)
 ```
 
 **Benefits:**
-- ✅ **Zero runtime overhead** (direct function calls)
+- ✅ **Zero runtime overhead** (no vtable lookups, methods devirtualized)
 - ✅ **Type-safe** (verified at compile time)
-- ✅ **Functional composition** (functions passed as dependencies)
-- ✅ **Lightweight** (no reflection, no interfaces needed)
+- ✅ **Static dispatch** (compiler knows exact types)
+- ✅ **Inlining potential** (optimizer can inline method calls)
 
 ## Error Handling: Railway-Oriented Programming
 
@@ -261,11 +266,11 @@ func main() {
 **Solution:** Application re-exports Domain types for Presentation use  
 **Implementation:** Type aliases and variable re-exports (zero overhead)
 
-### 4. Function Injection
+### 4. Static Dispatch via Generics
 
-**Pattern:** Functions passed as dependencies
-**Wiring:** Bootstrap injects all functions
-**Benefit:** Compile-time resolution (zero runtime cost)
+**Pattern:** Generic types with interface constraints
+**Wiring:** Bootstrap instantiates with concrete type parameters
+**Benefit:** Compile-time resolution, methods devirtualized (zero runtime overhead)
 
 ### 5. Concurrency-Ready Pattern
 
@@ -289,16 +294,15 @@ default:
 **Panic Recovery at Boundaries:**
 ```go
 // Infrastructure adapters recover panics and convert to Result errors
-func NewWriter(w io.Writer) outward.WriterFunc {
-    return func(ctx context.Context, message string) (result domerr.Result[model.Unit]) {
-        defer func() {
-            if r := recover(); r != nil {
-                result = domerr.Err[model.Unit](apperr.NewInfrastructureError(
-                    fmt.Sprintf("write panicked: %v", r)))
-            }
-        }()
-        // ... perform I/O
-    }
+func (cw *ConsoleWriter) Write(ctx context.Context, message string) (result domerr.Result[model.Unit]) {
+    defer func() {
+        if r := recover(); r != nil {
+            result = domerr.Err[model.Unit](domerr.NewInfrastructureError(
+                fmt.Sprintf("write panicked: %v", r)))
+        }
+    }()
+    // ... perform I/O
+    return domerr.Ok(model.Unit{})
 }
 ```
 
@@ -362,7 +366,7 @@ This project follows:
 2. **Result Monads:** All fallible operations return `domerr.Result[T]`
 3. **No Panics:** Errors are values, not thrown (recovery patterns for panic conversion)
 4. **Module Boundaries:** Compiler-enforced via go.mod
-5. **Function Injection:** Lightweight dependency injection
+5. **Static Dispatch:** Generic types with interface constraints for zero-overhead DI
 6. **Table-Driven Tests:** Using testify assertions (test module, NOT domain)
 
 ## Comparison with Ada Version
@@ -370,10 +374,10 @@ This project follows:
 | Aspect                  | Ada (Original)              | Go (This Port)                     |
 |-------------------------|-----------------------------|------------------------------------|
 | **Error Handling**      | Domain.Error.Result monad   | domain/error Result[T] monad       |
-| **Dependency Injection**| Generic instantiation       | Function injection                 |
+| **Dependency Injection**| Generic instantiation       | Static dispatch via generics       |
 | **String Handling**     | Bounded strings             | Regular strings (GC handles it)    |
 | **Memory Model**        | Stack allocation            | Stack + GC                         |
-| **Polymorphism**        | Compile-time (generics)     | Compile-time (function types)      |
+| **Polymorphism**        | Compile-time (generics)     | Compile-time (generics)            |
 | **Module Boundaries**   | GPR project dependencies    | go.mod dependencies                |
 | **Contracts**           | Pre/Post aspects            | Comments + assertions              |
 
@@ -382,7 +386,7 @@ This project follows:
 ✅ **Completed:**
 - Multi-module workspace structure with go.work
 - Custom domain Result/Option monads (ZERO external module dependencies)
-- Function injection dependency injection
+- Static dispatch via generics (zero-overhead DI)
 - Application.Error re-export pattern
 - Module boundary enforcement via go.mod
 - Comprehensive Makefile automation

@@ -1,11 +1,11 @@
-# Hybrid_App_Ada Quick Start Guide
+# Hybrid_App_Go Quick Start Guide
 
-**Version:** 1.0.0
-**Date:** November 18, 2025
-**SPDX-License-Identifier:** BSD-3-Clause
-**License File:** See the LICENSE file in the project root.
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.
-**Status:** Released
+**Version:** 1.0.0  
+**Date:** November 25, 2025  
+**SPDX-License-Identifier:** BSD-3-Clause  
+**License File:** See the LICENSE file in the project root.  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.  
+**Status:** Released  
 
 ---
 
@@ -27,94 +27,89 @@
 
 ### Prerequisites
 
-- **GNAT Compiler**: GNAT FSF 13+ or GNAT Pro (Ada 2022 support required)
-- **Alire**: Version 2.0+ (Ada package manager)
+- **Go**: Version 1.23+ (workspace and generics support required)
+- **Make**: GNU Make for build automation
+- **Python 3**: For architecture validation (optional)
 - **Java 11+**: For PlantUML diagram generation (optional)
-- **Python 3**: For architecture validation and tooling
 
-### Using Alire (Recommended)
+### Clone and Build
 
 ```bash
 # Clone the repository
-git clone https://github.com/abitofhelp/hybrid_app_ada.git
-cd hybrid_app_ada
+git clone https://github.com/abitofhelp/hybrid_app_go.git
+cd hybrid_app_go
 
-# Build with Alire (automatically fetches dependencies)
-alr build
-
-# Or use make
+# Build with Make
 make build
+
+# Or build directly with Go
+go build -o cmd/greeter/greeter ./cmd/greeter
 ```
 
 ### Verify Installation
 
 ```bash
 # Check that the executable was built
-ls -lh bin/greeter
+ls -lh cmd/greeter/greeter
 
 # Run the application
-./bin/greeter World
+./cmd/greeter/greeter World
 # Output: Hello, World!
 ```
 
-**Success!** You've built your first hexagonal architecture application in Ada 2022.
+**Success!** You've built your first hexagonal architecture application in Go.
 
 ---
 
 ## First Build
 
-The project uses both Alire and Make for building:
+The project uses Make for building:
 
 ### Using Make (Recommended)
 
 ```bash
-# Development build (with debug symbols)
+# Development build (with race detector)
 make build
 
 # Or explicit development mode
 make build-dev
 
-# Optimized build (O2)
-make build-opt
-
-# Release build
+# Release build (optimized)
 make build-release
 ```
 
-### Using Alire Directly
+### Using Go Directly
 
 ```bash
 # Development build
-alr build --development
+go build -race -o cmd/greeter/greeter ./cmd/greeter
 
 # Release build
-alr build --release
+go build -ldflags="-s -w" -o cmd/greeter/greeter ./cmd/greeter
 ```
 
 **Build Output:**
-- Executable: `bin/greeter`
-- Object files: `obj/`
-- Library artifacts: `lib/`
+- Executable: `cmd/greeter/greeter`
 
 ---
 
 ## Running the Application
 
-The Hybrid_App_Ada starter includes a simple greeter application demonstrating all architectural layers:
+The Hybrid_App_Go starter includes a simple greeter application demonstrating all architectural layers:
 
 ### Basic Usage
 
 ```bash
 # Greet a person
-./bin/greeter Alice
+./cmd/greeter/greeter Alice
 # Output: Hello, Alice!
 
 # Name with spaces (use quotes)
-./bin/greeter "Bob Smith"
+./cmd/greeter/greeter "Bob Smith"
 # Output: Hello, Bob Smith!
 
 # Show usage
-./bin/greeter
+./cmd/greeter/greeter
 # Output: Usage: greeter <name>
 # Exit code: 1
 ```
@@ -123,13 +118,13 @@ The Hybrid_App_Ada starter includes a simple greeter application demonstrating a
 
 ```bash
 # Empty name triggers validation error
-./bin/greeter ""
-# Output: Error: Name cannot be empty
+./cmd/greeter/greeter ""
+# Output: Error: Person name cannot be empty
 # Exit code: 1
 ```
 
 **Key Points:**
-- All errors return via Result monad (no exceptions)
+- All errors return via Result monad (no panics across boundaries)
 - Exit code 0 = success, 1 = error
 - Validation happens in Domain layer
 - Errors propagate through Application to Presentation
@@ -138,7 +133,7 @@ The Hybrid_App_Ada starter includes a simple greeter application demonstrating a
 
 ## Understanding the Architecture
 
-Hybrid_App_Ada demonstrates **5-layer hexagonal architecture**:
+Hybrid_App_Go demonstrates **5-layer hexagonal architecture**:
 
 ### Layer Overview
 
@@ -159,23 +154,23 @@ Hybrid_App_Ada demonstrates **5-layer hexagonal architecture**:
 ### Key Architectural Principles
 
 1. **Domain has zero dependencies** - Pure business logic
-2. **Presentation cannot access Domain** - Must use Application layer
+2. **Presentation cannot access Domain** - Must use Application layer re-exports
 3. **Static dependency injection** - Via generics (compile-time wiring)
 4. **Railway-oriented programming** - Result monads for error handling
-5. **Single-project structure** - Easy to deploy via Alire
+5. **Multi-module workspace** - go.work manages separate go.mod per layer
 
 ### Request Flow Example
 
 ```
 User Input ("Alice")
     ↓
-Presentation.CLI.Command.Greet (parses input)
+presentation/adapter/cli/command.GreetCommand (parses input)
     ↓
-Application.UseCase.Greet (validates via Domain)
+application/usecase.GreetUseCase (validates via Domain)
     ↓
-Domain.Value_Object.Person (business rules)
+domain/valueobject.Person (business rules)
     ↓
-Infrastructure.Adapter.Console_Writer (output)
+infrastructure/adapter.ConsoleWriter (output)
     ↓
 Result[Unit] (success or error)
     ↓
@@ -192,12 +187,12 @@ Let's modify the greeting message:
 
 ```bash
 # Open the Person value object
-# File: src/domain/value_object/domain-value_object-person.adb
+# File: domain/valueobject/person.go
 ```
 
 ### Step 2: Modify Greeting Format
 
-Find the greeting logic and modify it. The business logic is pure and has no dependencies.
+Find the `GreetingMessage()` method and modify it. The business logic is pure and has no dependencies.
 
 ### Step 3: Rebuild and Test
 
@@ -209,22 +204,22 @@ make rebuild
 make test-all
 
 # Test manually
-./bin/greeter Alice
+./cmd/greeter/greeter Alice
 ```
 
-**Best Practice**: Always run tests after making changes. This project has 82 tests ensuring correctness.
+**Best Practice**: Always run tests after making changes.
 
 ---
 
 ## Running Tests
 
-Hybrid_App_Ada includes comprehensive testing:
+Hybrid_App_Go includes comprehensive testing:
 
 ### Test Organization
 
-- **Unit Tests** (48 tests): Domain and Application logic
-- **Integration Tests** (26 tests): Cross-layer interactions
-- **E2E Tests** (8 tests): Full system via CLI
+- **Unit Tests** (42 assertions): Domain layer logic
+- **Integration Tests** (21 tests): CLI binary execution
+- **E2E Tests** (10 tests): Full system verification
 
 ### Run All Tests
 
@@ -233,12 +228,9 @@ Hybrid_App_Ada includes comprehensive testing:
 make test-all
 
 # Expected output:
-# Running all test executables...
-#
 # ########################################
 # ###                                  ###
-# ###   ALL TEST SUITES: SUCCESS      ###
-# ###   All tests passed!              ###
+# ###   ALL TESTS PASSED               ###
 # ###                                  ###
 # ########################################
 ```
@@ -247,7 +239,7 @@ make test-all
 
 ```bash
 # Unit tests only (fast)
-make test-unit
+make test
 
 # Integration tests only
 make test-integration
@@ -256,48 +248,7 @@ make test-integration
 make test-e2e
 ```
 
-### Test Coverage
-
-Hybrid_App_Ada supports code coverage analysis using GNATcoverage.
-
-#### First-Time Setup
-
-Before running coverage analysis for the first time, you need to build the GNATcoverage runtime library:
-
-```bash
-# Build the coverage runtime (one-time setup)
-make build-coverage-runtime
-
-# This will:
-# - Locate your GNATcoverage installation
-# - Build the runtime library from sources
-# - Install it to external/gnatcov_rts/
-```
-
-**Note**: This step is automatically performed the first time you run `make test-coverage`, but you can run it explicitly if needed.
-
-#### Running Coverage Analysis
-
-```bash
-# Run tests with GNATcoverage analysis
-make test-coverage
-
-# View coverage report
-# Coverage reports generated in coverage/ directory
-# - coverage/index.html - HTML coverage report
-# - coverage/*.xcov - Detailed coverage files
-```
-
-#### Cleaning Coverage Data
-
-```bash
-# Remove coverage artifacts
-make clean-coverage
-```
-
-**Coverage Runtime**: The runtime is built from your GNATcoverage installation sources and cached in `external/gnatcov_rts/`. This ensures reproducible builds across different environments.
-
-**Test Framework**: Custom lightweight framework (no AUnit dependency) located in `test/common/test_framework.{ads,adb}`
+**Test Framework**: Custom lightweight framework in `domain/test/` plus testify for assertions.
 
 ---
 
@@ -308,102 +259,91 @@ make clean-coverage
 ```bash
 make build              # Development build (default)
 make build-dev          # Explicit development mode
-make build-opt          # Optimized build (O2)
-make build-release      # Release build
+make build-release      # Release build (optimized)
 make rebuild            # Clean and rebuild
 ```
 
 ### Testing
 
 ```bash
-make test                    # Run all tests (alias for test-all)
-make test-all                # Run entire test suite
-make test-unit               # Unit tests only
-make test-integration        # Integration tests only
-make test-e2e                # E2E tests only
-make test-coverage           # Tests with coverage analysis
-make build-coverage-runtime  # Build GNATcoverage runtime (one-time setup)
+make test               # Run unit tests
+make test-all           # Run all tests (unit + integration + e2e)
+make test-integration   # Integration tests only
+make test-e2e           # E2E tests only
 ```
 
 ### Quality & Architecture
 
 ```bash
-make check              # Run static analysis
 make check-arch         # Validate architecture boundaries
-make stats              # Show project statistics
+make fmt                # Format code with gofmt
+make lint               # Run golangci-lint
 ```
 
 ### Cleaning
 
 ```bash
-make clean              # Clean build artifacts (fast rebuild)
-make clean-deep         # Deep clean (includes dependencies - slow rebuild)
-make clean-coverage     # Clean coverage data
-make clean-clutter      # Remove temp files and backups
+make clean              # Clean build artifacts
 ```
 
 ### Utilities
 
 ```bash
-make deps               # Show dependency information
-make prereqs            # Verify prerequisites
-make refresh            # Refresh Alire dependencies
-make compress           # Create source archive (tar.gz)
+make run NAME=Alice     # Build and run with argument
+make help               # Show all available targets
 ```
 
 ---
 
 ## Common Issues
 
-### Q: Build fails with "Ada_2022 not supported"
+### Q: Build fails with "go.work not found"
 
-**A:** You need GNAT FSF 13+ or GNAT Pro. Check your compiler version:
+**A:** Ensure you're in the project root directory:
 
 ```bash
-gnatls -v
+pwd
+# Should show: .../hybrid_app_go
 ```
 
-### Q: "functional" dependency not found
+### Q: "package not found" errors
 
-**A:** Alire should fetch dependencies automatically. Try:
+**A:** Sync the workspace:
 
 ```bash
-alr update
-alr build
+go work sync
 ```
 
 ### Q: Architecture validation warnings appear
 
-**A:** The `make check-arch` target validates layer boundaries. Warnings indicate potential violations:
+**A:** The `make check-arch` target validates layer boundaries:
 
 ```bash
 # View architecture validation
 make check-arch
 ```
 
-These are warnings (not errors) - the build will still succeed.
+Violations indicate forbidden imports (e.g., Presentation importing Domain).
 
-### Q: Where are the test executables?
+### Q: Tests fail with "binary not found"
 
-**A:** Test executables are in `test/bin/`:
+**A:** Build the application first:
 
 ```bash
-ls -lh test/bin/
-# Output:
-# unit_runner
-# integration_runner
-# e2e_runner
+make build
+make test-all
 ```
 
 ### Q: How do I run a single test?
 
-**A:** Execute the test runner directly:
+**A:** Use go test directly:
 
 ```bash
-# Run specific test runner
-./test/bin/unit_runner
-./test/bin/integration_runner
-./test/bin/e2e_runner
+# Run specific test
+go test -v -run TestGreeter_ValidName ./test/integration/...
+
+# Run with build tag
+go test -v -tags=integration ./test/integration/...
 ```
 
 ---
@@ -414,7 +354,7 @@ ls -lh test/bin/
 
 - **[Software Design Specification](formal/software_design_specification.md)** - Deep dive into architecture
 - **[Architecture Diagrams](diagrams/)** - Visual documentation
-- **[Layer Dependencies](diagrams/01_layer_dependencies.svg)** - See dependency flow
+- **[Layer Dependencies](diagrams/layer_dependencies.svg)** - See dependency flow
 
 ### Read the Source Code
 
@@ -422,26 +362,26 @@ Start with the wiring in Bootstrap:
 
 ```bash
 # See how all layers are wired together
-cat src/bootstrap/cli/bootstrap-cli.adb
+cat bootstrap/cli/cli.go
 ```
 
 Then explore each layer:
 
 ```bash
 # Domain (pure business logic)
-ls src/domain/
+ls domain/
 
 # Application (use cases and ports)
-ls src/application/
+ls application/
 
 # Infrastructure (adapters)
-ls src/infrastructure/
+ls infrastructure/
 
 # Presentation (CLI)
-ls src/presentation/
+ls presentation/
 
 # Bootstrap (composition root)
-ls src/bootstrap/
+ls bootstrap/
 ```
 
 ### Study the Test Suite
@@ -451,39 +391,34 @@ ls src/bootstrap/
 ls -R test/
 
 # Read test framework
-cat test/common/test_framework.ads
+cat domain/test/test_framework.go
 ```
 
-### Understand Error Handling
+### Understand Static Dispatch
 
-- **[Error Handling Strategy](guides/error_handling_strategy.md)** - Railway-oriented programming guide
-- See how Result monads replace exceptions
-- Study error propagation patterns
+```go
+// Generic type with interface constraint
+type GreetUseCase[W outbound.WriterPort] struct {
+    writer W
+}
 
-### Learn Dependency Injection
+// Concrete type known at compile time
+uc := usecase.NewGreetUseCase[*adapter.ConsoleWriter](writer)
 
-- **[Static vs Dynamic Dispatch](diagrams/05_static_vs_dynamic_dispatch.svg)** - Generic-based DI
-- See Bootstrap wiring examples
-- Understand compile-time polymorphism
+// Method call is statically dispatched (no vtable)
+uc.Execute(ctx, cmd)
+```
 
 ### Add Your Own Use Case
 
 Follow the pattern:
 
-1. **Domain**: Create value objects/entities (`src/domain/`)
-2. **Application**: Define command, use case, ports (`src/application/`)
-3. **Infrastructure**: Implement adapters (`src/infrastructure/`)
-4. **Presentation**: Create CLI command (`src/presentation/`)
-5. **Bootstrap**: Wire everything together (`src/bootstrap/`)
+1. **Domain**: Create value objects/entities (`domain/valueobject/`)
+2. **Application**: Define command, use case, ports (`application/`)
+3. **Infrastructure**: Implement adapters (`infrastructure/adapter/`)
+4. **Presentation**: Create CLI command (`presentation/adapter/cli/command/`)
+5. **Bootstrap**: Wire everything together (`bootstrap/cli/`)
 6. **Tests**: Add unit/integration/e2e tests (`test/`)
-
-### Contributing
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
-- Code style guidelines
-- Testing requirements
-- Pull request process
-- Architecture rules
 
 ---
 
@@ -493,24 +428,21 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
 - 📋 **[Software Requirements Specification](formal/software_requirements_specification.md)** - Requirements
 - 🏗️ **[Software Design Specification](formal/software_design_specification.md)** - Architecture
 - 🧪 **[Software Test Guide](formal/software_test_guide.md)** - Testing guide
-- 🗺️ **[Roadmap](roadmap.md)** - Future development plans
 
 ---
 
 ## Support
 
-For questions, issues, or contributions:
+For questions or issues:
 
-- 📧 **Email**: support@abitofhelp.com
-- 🐛 **Issues**: GitHub Issues
+- 🐛 **Issues**: [GitHub Issues](https://github.com/abitofhelp/hybrid_app_go/issues)
 - 📖 **Documentation**: See `docs/` directory
-- 💬 **Discussions**: GitHub Discussions
 
 ---
 
 ## License
 
-Hybrid_App_Ada is licensed under the BSD-3-Clause License.
+Hybrid_App_Go is licensed under the BSD-3-Clause License.
 Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
 
 See [LICENSE](../LICENSE) for full license text.

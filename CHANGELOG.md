@@ -96,6 +96,30 @@ _First stable release - Professional Go 1.22+ application starter template demon
 - **go.work**: Workspace for multi-module project
 - **Separate go.mod per layer**: Clear dependency boundaries
 
+### Changed
+
+#### Port Naming Conventions
+- Renamed `application/port/inward` to `application/port/inbound` (driving adapters)
+- Renamed `application/port/outward` to `application/port/outbound` (driven adapters)
+- Updated all imports, documentation, and PlantUML diagrams
+
+#### Presentation Layer Structure
+- Restructured `presentation/cli/command` to `presentation/adapter/cli/command`
+- Consistent with adapter pattern used in infrastructure layer
+
+#### Testing Improvements
+- Added summary banner to integration tests (matching e2e test format)
+- Integration tests now display pass/fail count in colored banner
+
+#### Tooling
+- Fixed arch_guard.py go.mod parsing to handle multi-line `require (...)` blocks
+- Bootstrap layer now correctly shows all dependencies in architecture validation
+
+#### Documentation
+- Updated `docs/index.md` and `docs/quick_start.md` for Go project (was Ada)
+- Updated README.md to reflect static dispatch via generics pattern
+- All formal documentation and diagrams updated with current paths
+
 ### Architecture Patterns
 
 - **Static Dependency Injection**: Generic structs with interface constraints (compile-time DI)

@@ -76,7 +76,7 @@ import (
 //   - Converts I/O errors and panics to Result types
 //   - Handles context cancellation
 //
-// Implements: outward.WriterPort
+// Implements: outbound.WriterPort
 type ConsoleWriter struct {
 	w io.Writer
 }
