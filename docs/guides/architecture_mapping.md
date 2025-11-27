@@ -1,5 +1,13 @@
 # Architecture Mapping: Go ↔ Ada
 
+**Version:** 1.0.0  
+**Date:** November 26, 2025  
+**SPDX-License-Identifier:** BSD-3-Clause  
+**License File:** See the LICENSE file in the project root.  
+**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.  
+**Status:** Released  
+
+
 **Purpose**: Educational tool showing how the same hexagonal architecture is implemented in Go and Ada using each language's idioms.
 
 ## Core Principle

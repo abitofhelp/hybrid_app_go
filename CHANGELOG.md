@@ -1,5 +1,13 @@
 # Changelog
 
+**Version:** 1.0.0  
+**Date:** November 26, 2025  
+**SPDX-License-Identifier:** BSD-3-Clause  
+**License File:** See the LICENSE file in the project root.  
+**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.  
+**Status:** Released  
+
+
 All notable changes to Hybrid_App_Go will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
