@@ -168,6 +168,9 @@ class BaseReleaseAdapter(ABC):
         """
         makefile = config.project_root / 'Makefile'
         if makefile.exists():
+            if getattr(config, 'dry_run', False):
+                print("  [DRY-RUN] Would run 'make clean'")
+                return True
             return self.run_command(['make', 'clean'], config.project_root) is not None
         return True
 
@@ -367,6 +370,8 @@ class BaseReleaseAdapter(ABC):
             content = '\n'.join(new_lines)
 
             if content != old_content:
+                if getattr(config, 'dry_run', False):
+                    return True  # Report as updated in dry-run
                 file_path.write_text(content, encoding='utf-8')
                 return True
 
@@ -406,6 +411,10 @@ class BaseReleaseAdapter(ABC):
             )
 
             lines.insert(title_idx + 1, header)
+
+            if getattr(config, 'dry_run', False):
+                return True  # Report as added in dry-run
+
             file_path.write_text(''.join(lines), encoding='utf-8')
             return True
 
@@ -438,15 +447,18 @@ class BaseReleaseAdapter(ABC):
                     content, re.IGNORECASE
                 ))
 
+                dry_prefix = "[DRY-RUN] Would update" if getattr(config, 'dry_run', False) else "Updated"
+                dry_prefix_add = "[DRY-RUN] Would add" if getattr(config, 'dry_run', False) else "Added"
+
                 if has_metadata:
                     if self.update_markdown_version(md_file, config):
                         rel_path = md_file.relative_to(config.project_root)
-                        print(f"  Updated {rel_path}")
+                        print(f"  {dry_prefix} {rel_path}")
                         updated_count += 1
                 else:
                     if self.add_markdown_header(md_file, config):
                         rel_path = md_file.relative_to(config.project_root)
-                        print(f"  Added header to {rel_path}")
+                        print(f"  {dry_prefix_add} header to {rel_path}")
                         updated_count += 1
 
             except Exception as e:
@@ -474,6 +486,10 @@ class BaseReleaseAdapter(ABC):
         puml_files = list(diagrams_dir.glob("*.puml"))
         if not puml_files:
             print("  No PlantUML files found")
+            return True
+
+        if getattr(config, 'dry_run', False):
+            print(f"  [DRY-RUN] Would generate {len(puml_files)} diagram(s)")
             return True
 
         for puml_file in puml_files:

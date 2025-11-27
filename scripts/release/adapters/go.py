@@ -205,6 +205,10 @@ class GoReleaseAdapter(BaseReleaseAdapter):
         """
         print("Formatting Go code...")
 
+        if getattr(config, 'dry_run', False):
+            print("  [DRY-RUN] Would format Go code")
+            return True
+
         # Try make format first
         makefile = config.project_root / 'Makefile'
         if makefile.exists():
@@ -241,6 +245,10 @@ class GoReleaseAdapter(BaseReleaseAdapter):
             True if successful
         """
         print("Cleaning up temporary files...")
+
+        if getattr(config, 'dry_run', False):
+            print("  [DRY-RUN] Would clean build artifacts")
+            return True
 
         # Try make clean first
         makefile = config.project_root / 'Makefile'

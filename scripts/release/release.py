@@ -182,6 +182,10 @@ def update_changelog(config) -> bool:
     if config.is_initial_release:
         content = create_initial_changelog(config)
 
+        if config.dry_run:
+            print(f"  [DRY-RUN] Would create CHANGELOG.md for initial release {config.version}")
+            return True
+
         if changelog_file.exists():
             backup_file = config.project_root / "CHANGELOG.md.backup"
             changelog_file.rename(backup_file)
@@ -244,6 +248,10 @@ def update_changelog(config) -> bool:
             flags=re.DOTALL,
             count=1
         )
+
+        if config.dry_run:
+            print(f"  [DRY-RUN] Would update CHANGELOG.md with release {config.version}")
+            return True
 
         changelog_file.write_text(content, encoding='utf-8')
         print(f"  Updated CHANGELOG.md with release {config.version}")
