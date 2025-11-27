@@ -115,7 +115,7 @@ class GoReleaseAdapter(BaseReleaseAdapter):
 
     def run_build(self, config) -> bool:
         """
-        Run Go build.
+        Run Go release build.
 
         Args:
             config: ReleaseConfig instance
@@ -123,28 +123,28 @@ class GoReleaseAdapter(BaseReleaseAdapter):
         Returns:
             True if build successful
         """
-        print("Running Go build...")
+        print("Running Go release build...")
 
-        # Try make first (if Makefile exists with build target)
+        # Try make first (if Makefile exists with build-release target)
         makefile = config.project_root / 'Makefile'
         if makefile.exists():
             # Run make clean first
             self.run_command(['make', 'clean'], config.project_root, capture_output=True)
 
-            # Then build
-            result = self.run_command(['make', 'build'], config.project_root)
+            # Use build-release for optimized binary (-ldflags="-s -w")
+            result = self.run_command(['make', 'build-release'], config.project_root)
             if result:
-                print("  Build successful (via make)")
+                print("  Release build successful (via make)")
                 return True
 
-        # Fallback to direct go build
+        # Fallback to direct go build with release flags
         result = self.run_command(
-            ['go', 'build', './...'],
+            ['go', 'build', '-ldflags=-s -w', './...'],
             config.project_root
         )
 
         if result:
-            print("  Build successful")
+            print("  Release build successful")
             return True
 
         print("  Build failed")
