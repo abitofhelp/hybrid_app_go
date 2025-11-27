@@ -836,7 +836,7 @@ class BaseReleaseAdapter(ABC):
                         top_refs = re.findall(r'^[├└│─\s]{0,4}(\w+)/', block, re.MULTILINE)
                         for dir_name in top_refs:
                             # Skip project name references (hybrid_lib_go, hybrid_app_go, etc.)
-                            project_name = config.project_root.name
+                            project_name = config.project_root.resolve().name
                             if dir_name not in top_level_dirs and dir_name not in ['hybrid', 'go', project_name]:
                                 discrepancies.append(
                                     f"  {rel_path}: Directory tree shows '{dir_name}/' but it doesn't exist at project root"
