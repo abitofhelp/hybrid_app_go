@@ -299,6 +299,25 @@ def prepare_release(config, adapter) -> bool:
         print_error("Link validation failed - fix broken links before release")
         return False
 
+    # Step 0c: Validate documentation consistency
+    print_info("\nStep 0c: Validating documentation consistency...")
+    has_discrepancies, discrepancies = adapter.validate_documentation(config)
+    if has_discrepancies:
+        message = f"""Documentation validation found {len(discrepancies)} potential discrepancy(ies).
+
+Please review the items listed above.
+
+These may be:
+- Incorrect terminology for project type (library vs application)
+- References to non-existent files
+- Outdated directory structures in documentation
+
+You can:
+- Press ENTER to acknowledge and continue (if they are false positives)
+- Press 'q' to quit and fix the issues before releasing"""
+        if not prompt_user_continue(message):
+            return False
+
     # Step 1: Clean up temporary files
     print_info("\nStep 1: Cleaning up temporary files...")
     if not adapter.cleanup_temp_files(config):

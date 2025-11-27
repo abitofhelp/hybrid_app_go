@@ -696,3 +696,195 @@ class BaseReleaseAdapter(ABC):
         if result:
             print(f"  Created GitHub release {config.tag_name}")
         return result is not None
+
+    def validate_documentation(self, config) -> Tuple[bool, List[str]]:
+        """
+        Validate documentation consistency across source code, tests, and docs.
+
+        Checks for discrepancies between:
+        - Source code comments (.go, .adb, .ads files)
+        - Test files
+        - Documentation files (docs/**, README.md, index.md)
+        - Architecture terminology (library vs application patterns)
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            Tuple of (has_discrepancies, list_of_discrepancy_messages)
+        """
+        print("Validating documentation consistency...")
+        discrepancies = []
+
+        # Determine project type (library vs application)
+        is_library = self._detect_project_type(config.project_root)
+        project_type = "library" if is_library else "application"
+        print(f"  Detected project type: {project_type}")
+
+        # Define terminology checks based on project type
+        if is_library:
+            # Library should NOT have these terms (they belong to applications)
+            forbidden_terms = [
+                (r'\bbootstrap\b', "bootstrap", "api/adapter/desktop (composition root)"),
+                (r'\bpresentation\b', "presentation", "api (facade)"),
+                (r'\b5[-\s]?layer\b', "5-layer", "4-layer"),
+                (r'\bCLI\s+command\b', "CLI command", "API facade"),
+                (r'\bBootstrap\s+layer\b', "Bootstrap layer", "API layer"),
+                (r'\bPresentation\s+layer\b', "Presentation layer", "API layer"),
+            ]
+            required_terms = [
+                (r'\bapi\b', "api layer/facade"),
+                (r'\b4[-\s]?layer\b', "4-layer architecture"),
+            ]
+        else:
+            # Application should NOT have these terms (they belong to libraries)
+            forbidden_terms = [
+                (r'\bapi\s+facade\b', "api facade", "bootstrap/presentation"),
+                (r'\bapi/adapter/desktop\b', "api/adapter/desktop", "bootstrap/cli"),
+                (r'\b4[-\s]?layer\b', "4-layer", "5-layer"),
+            ]
+            required_terms = [
+                (r'\bbootstrap\b', "bootstrap layer"),
+                (r'\bpresentation\b', "presentation layer"),
+                (r'\b5[-\s]?layer\b', "5-layer architecture"),
+            ]
+
+        # Collect all files to check
+        files_to_check = []
+
+        # Source code files
+        for pattern in ["**/*.go", "**/*.adb", "**/*.ads"]:
+            files_to_check.extend(config.project_root.glob(pattern))
+
+        # Documentation files
+        files_to_check.extend(config.project_root.glob("docs/**/*.md"))
+        files_to_check.extend(config.project_root.glob("*.md"))
+
+        # Exclude common false positive locations
+        exclude_patterns = [
+            "vendor/", "node_modules/", ".git/",
+            "CHANGELOG.md",  # Changelog may reference old versions
+        ]
+
+        for file_path in files_to_check:
+            file_str = str(file_path)
+            if any(excl in file_str for excl in exclude_patterns):
+                continue
+
+            try:
+                content = file_path.read_text(encoding='utf-8')
+                rel_path = file_path.relative_to(config.project_root)
+
+                # Check for forbidden terms
+                for pattern, term, replacement in forbidden_terms:
+                    matches = list(re.finditer(pattern, content, re.IGNORECASE))
+                    for match in matches:
+                        # Get line number
+                        line_num = content[:match.start()].count('\n') + 1
+                        # Get context (the line containing the match)
+                        lines = content.split('\n')
+                        context = lines[line_num - 1].strip()[:60]
+
+                        # Skip if this is in a comparison table (lib vs app) or markdown table
+                        if '|' in context:
+                            continue
+
+                        discrepancies.append(
+                            f"  {rel_path}:{line_num}: Found '{term}' "
+                            f"(should be '{replacement}')\n    Context: {context}..."
+                        )
+
+                # Check for stale file references
+                file_refs = re.findall(r'`([^`]+\.(go|md|ads|adb))`', content)
+                for ref, _ in file_refs:
+                    # Skip glob patterns like *_test.go
+                    if '*' in ref:
+                        continue
+                    # Skip home directory references
+                    if ref.startswith('~'):
+                        continue
+                    # Normalize path
+                    ref_clean = ref.lstrip('./')
+                    ref_path = config.project_root / ref_clean
+                    if not ref_path.exists() and not ref_clean.startswith('http'):
+                        # Get line number for context
+                        idx = content.find(f'`{ref}`')
+                        if idx >= 0:
+                            line_num = content[:idx].count('\n') + 1
+                            discrepancies.append(
+                                f"  {rel_path}:{line_num}: Reference to non-existent file '{ref}'"
+                            )
+
+            except Exception as e:
+                print(f"  Warning: Could not read {file_path}: {e}")
+
+        # Check for directory structure consistency in docs
+        # Only check top-level directories mentioned in trees
+        top_level_dirs = {d.name for d in config.project_root.iterdir() if d.is_dir()}
+        for md_file in config.project_root.glob("docs/**/*.md"):
+            try:
+                content = md_file.read_text(encoding='utf-8')
+                rel_path = md_file.relative_to(config.project_root)
+
+                # Find directory tree blocks and validate top-level paths
+                tree_blocks = re.findall(r'```\n([^`]+)\n```', content)
+                for block in tree_blocks:
+                    # Only check if this looks like a directory tree starting from project root
+                    if '/' in block and ('├' in block or '└' in block or '│' in block):
+                        # Look for top-level directory references (direct children of root)
+                        # Pattern: matches directories at tree root level (not indented or minimally indented)
+                        top_refs = re.findall(r'^[├└│─\s]{0,4}(\w+)/', block, re.MULTILINE)
+                        for dir_name in top_refs:
+                            # Skip project name references (hybrid_lib_go, hybrid_app_go, etc.)
+                            project_name = config.project_root.name
+                            if dir_name not in top_level_dirs and dir_name not in ['hybrid', 'go', project_name]:
+                                discrepancies.append(
+                                    f"  {rel_path}: Directory tree shows '{dir_name}/' but it doesn't exist at project root"
+                                )
+            except Exception as e:
+                continue
+
+        # Report results
+        has_discrepancies = len(discrepancies) > 0
+
+        if has_discrepancies:
+            print(f"\n  Found {len(discrepancies)} potential discrepancy(ies):\n")
+            for d in discrepancies:
+                print(d)
+        else:
+            print("  All documentation is consistent")
+
+        return has_discrepancies, discrepancies
+
+    def _detect_project_type(self, project_root: Path) -> bool:
+        """
+        Detect if project is a library (vs application).
+
+        Args:
+            project_root: Path to project root
+
+        Returns:
+            True if library, False if application
+        """
+        # Check for library indicators
+        api_dir = project_root / "api"
+        bootstrap_dir = project_root / "bootstrap"
+        cmd_dir = project_root / "cmd"
+
+        # Libraries have api/ but not bootstrap/ or cmd/
+        if api_dir.exists() and not bootstrap_dir.exists() and not cmd_dir.exists():
+            return True
+
+        # Applications have bootstrap/ and/or cmd/
+        if bootstrap_dir.exists() or cmd_dir.exists():
+            return False
+
+        # Check project name as fallback
+        project_name = project_root.name.lower()
+        if "_lib_" in project_name or project_name.endswith("_lib"):
+            return True
+        if "_app_" in project_name or project_name.endswith("_app"):
+            return False
+
+        # Default to application
+        return False

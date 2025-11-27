@@ -1,6 +1,6 @@
 # Changelog
 
-**Version:** 1.0.0  
+**Version:** 1.0.1
 **Date:** November 26, 2025  
 **SPDX-License-Identifier:** BSD-3-Clause  
 **License File:** See the LICENSE file in the project root.  
@@ -12,6 +12,31 @@ All notable changes to Hybrid_App_Go will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [Unreleased]
+
+### Changed
+
+### Added
+
+### Removed
+
+### Fixed
+
+---
+
+## [1.0.1] - 2025-11-26
+
+### Added
+
+- **Documentation Validation**: New Step 0c in release scripts validates documentation consistency
+  - Auto-detects project type (library vs application)
+  - Checks for incorrect terminology (e.g., library terms in app projects)
+  - Validates file references exist
+  - Validates directory trees in documentation
+  - Prompts user to review discrepancies before continuing
 
 ---
 
