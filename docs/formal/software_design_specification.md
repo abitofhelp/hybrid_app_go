@@ -221,6 +221,7 @@ func (r Result[T]) UnwrapOr(defaultVal T) T
 - Value semantics (not pointer receiver)
 - No panics thrown from accessors (use preconditions)
 - UnwrapOr for convenience with defaults
+- `ErrorKind` and `ErrorType` names intentionally include "Error" prefix despite linter stutter warnings (`error.ErrorKind`). This is because these types are re-exported through `application/error` as `apperr.ErrorKind` and `apperr.ErrorType`, where the full names provide clarity to presentation layer consumers.
 
 ### 3.2 Application Layer Design
 

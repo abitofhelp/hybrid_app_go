@@ -32,6 +32,11 @@ import "fmt"
 
 // ErrorKind represents categories of errors that can occur in the application.
 // This enables pattern matching and different handling strategies per category.
+//
+// Design Decision: The "ErrorKind" name intentionally includes "Error" prefix
+// despite the package name being "error" (which causes linter stutter warnings).
+// This is because the type is re-exported through application/error as apperr.ErrorKind,
+// where the full name provides clarity to presentation layer consumers.
 type ErrorKind int
 
 const (
@@ -56,6 +61,11 @@ func (k ErrorKind) String() string {
 
 // ErrorType is the concrete error type used throughout the application.
 // It combines an error category (Kind) with a descriptive message.
+//
+// Design Decision: The "ErrorType" name intentionally includes "Error" prefix
+// despite the package name being "error" (which causes linter stutter warnings).
+// This is because the type is re-exported through application/error as apperr.ErrorType,
+// where the full name provides clarity to presentation layer consumers.
 //
 // Contract:
 //   - Message should be non-empty when creating errors
