@@ -85,9 +85,9 @@ hybrid_app_go/
 - **Pattern**: `*_test.go`
 - **Test Functions**: `Test<Component>_<Scenario>` or `Test<Component>`
 - **Examples**:
-  - `result_test.go` -> Tests `domain/error.Result[T]`
-  - `person_test.go` -> Tests `domain/valueobject.Person`
-  - `greet_flow_test.go` -> Tests CLI greeter flow
+  - `domain/error/result_test.go` -> Tests `domain/error.Result[T]`
+  - `domain/valueobject/person_test.go` -> Tests `domain/valueobject.Person`
+  - `test/integration/greet_flow_test.go` -> Tests CLI greeter flow
 
 ---
 
