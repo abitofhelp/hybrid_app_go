@@ -49,11 +49,6 @@ Welcome to the **Hybrid_App_Go** documentation. This Go 1.23+ application starte
   - Coverage procedures
   - Writing new tests
 
-### Development Guides
-
-- 🗺️ **[Architecture Mapping Guide](guides/architecture_mapping.md)** - Layer responsibilities
-- 🔌 **[Ports Mapping Guide](guides/ports_mapping.md)** - Port definitions and implementations
-
 ---
 
 ## Architecture Overview
@@ -235,7 +230,6 @@ hybrid_app_go/
 ├── docs/
 │   ├── formal/                # SRS, SDS, Test Guide
 │   ├── diagrams/              # UML diagrams
-│   ├── guides/                # Architecture guides
 │   ├── quick_start.md         # Getting started
 │   └── index.md               # This file
 ├── scripts/
