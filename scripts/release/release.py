@@ -178,8 +178,27 @@ def update_changelog(config) -> bool:
     """
     changelog_file = config.project_root / "CHANGELOG.md"
 
-    # Handle initial release
+    # Check if version already exists in CHANGELOG
+    if changelog_file.exists():
+        existing_content = changelog_file.read_text(encoding='utf-8')
+        if re.search(rf'## \[{re.escape(config.version)}\]', existing_content):
+            print(f"  Version [{config.version}] already exists in CHANGELOG.md")
+            print(f"  Skipping CHANGELOG update (already prepared)")
+            return True
+
+    # Handle initial release - only create template if CHANGELOG doesn't exist
+    # or is essentially empty/template-only
     if config.is_initial_release:
+        if changelog_file.exists():
+            existing_content = changelog_file.read_text(encoding='utf-8')
+            # Check if existing CHANGELOG has substantial content (not just a template)
+            # Look for actual content beyond headers and empty sections
+            has_content = bool(re.search(r'###\s+\w+.*\n\s*-\s+\S', existing_content, re.DOTALL))
+            if has_content:
+                print(f"  CHANGELOG.md has existing content - preserving it")
+                print(f"  Skipping template generation for initial release")
+                return True
+
         content = create_initial_changelog(config)
 
         if config.dry_run:
