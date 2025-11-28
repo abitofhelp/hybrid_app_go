@@ -168,6 +168,37 @@ _Initial release of {config.project_name}._
 """
 
 
+def has_meaningful_content(section_content: str) -> bool:
+    """
+    Check if a CHANGELOG section has meaningful content.
+
+    Returns True if the section contains actual bullet points with content,
+    not just placeholder text like "_Initial release._" or "TBD".
+
+    Args:
+        section_content: The content of a version section
+
+    Returns:
+        True if section has meaningful content (bullet points with text)
+    """
+    # Look for bullet points with actual content (- followed by text)
+    has_bullets = bool(re.search(r'^-\s+\S', section_content, re.MULTILINE))
+
+    # Check for placeholder text patterns
+    placeholder_patterns = [
+        r'^\s*_[^_]+_\s*$',  # Single italic line like "_Initial release._"
+        r'TBD',
+        r'placeholder',
+        r'TODO',
+    ]
+    is_placeholder = any(
+        re.search(pattern, section_content, re.IGNORECASE | re.MULTILINE)
+        for pattern in placeholder_patterns
+    )
+
+    return has_bullets or (not is_placeholder and len(section_content.strip()) > 50)
+
+
 def update_changelog(config) -> bool:
     """
     Update or create CHANGELOG.md with new version.
@@ -175,16 +206,27 @@ def update_changelog(config) -> bool:
     Behavior:
     - For initial releases: Create or overwrite with clean template
     - For later versions: Update [Unreleased] to new version
+    - If version section exists but is placeholder, check [Unreleased] for content
     """
     changelog_file = config.project_root / "CHANGELOG.md"
 
     # Check if version already exists in CHANGELOG
     if changelog_file.exists():
         existing_content = changelog_file.read_text(encoding='utf-8')
-        if re.search(rf'## \[{re.escape(config.version)}\]', existing_content):
-            print(f"  Version [{config.version}] already exists in CHANGELOG.md")
-            print(f"  Skipping CHANGELOG update (already prepared)")
-            return True
+        version_match = re.search(
+            rf'## \[{re.escape(config.version)}\]\s*-?\s*[^\n]*\n(.*?)(?=\n## |\Z)',
+            existing_content,
+            re.DOTALL
+        )
+        if version_match:
+            version_content = version_match.group(1).strip()
+            if has_meaningful_content(version_content):
+                print(f"  Version [{config.version}] already exists with content")
+                print(f"  Skipping CHANGELOG update (already prepared)")
+                return True
+            else:
+                print_warning(f"Version [{config.version}] exists but has placeholder content")
+                print_info("Checking [Unreleased] section for content to merge...")
 
     # Handle initial release - only create template if CHANGELOG doesn't exist
     # or is essentially empty/template-only

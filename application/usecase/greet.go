@@ -100,10 +100,16 @@ func NewGreetUseCase[W outbound.WriterPort](writer W) *GreetUseCase[W] {
 //
 // Orchestration workflow:
 //  1. Extract name from GreetCommand DTO
-//  2. Validate and create Person from name
-//  3. Generate greeting message from Person
+//  2. Validate and create Person from name (domain validation)
+//  3. Generate greeting message (application-level formatting)
 //  4. Write greeting to console via output port (STATIC DISPATCH)
-//  5. Propagate any errors up to caller
+//  5. Propagate any errors via railway-oriented programming
+//
+// Railway-Oriented Programming:
+//   - Uses AndThenTo for functional composition across Result types
+//   - Person validation failure short-circuits to error track
+//   - Writer failure propagates error to caller
+//   - Success returns Ok(Unit)
 //
 // Static Dispatch:
 //   - uc.writer.Write() is statically dispatched because W is concrete at instantiation
@@ -125,30 +131,25 @@ func NewGreetUseCase[W outbound.WriterPort](writer W) *GreetUseCase[W] {
 //   - Post: Returns Err(ValidationError) if name validation failed
 //   - Post: Returns Err(InfrastructureError) if write failed or ctx cancelled
 func (uc *GreetUseCase[W]) Execute(ctx context.Context, cmd command.GreetCommand) domerr.Result[model.Unit] {
-	// Step 1: Extract name from DTO
-	name := cmd.GetName()
+	// Step 1: Validate and create Person from name (domain validation)
+	personResult := valueobject.CreatePerson(cmd.GetName())
 
-	// Step 2: Validate and create Person from name (domain validation)
-	personResult := valueobject.CreatePerson(name)
+	// Step 2-4: Chain operations using railway-oriented programming
+	// AndThenTo enables cross-type chaining: Result[Person] → Result[Unit]
+	// If personResult is Error, error propagates without calling the lambda
+	// If personResult is Ok, lambda executes and may return Ok or Error
+	return domerr.AndThenTo(personResult, func(person valueobject.Person) domerr.Result[model.Unit] {
+		// Application-level greeting format (orchestration, not domain logic)
+		message := formatGreeting(person.GetName())
 
-	// Check if person creation failed (railway-oriented programming)
-	if personResult.IsError() {
-		// Propagate validation error to caller
-		domErr := personResult.ErrorInfo()
-		return domerr.Err[model.Unit](domErr)
-	}
+		// Write to console via output port (STATIC DISPATCH)
+		return uc.writer.Write(ctx, message)
+	})
+}
 
-	// Extract validated Person
-	person := personResult.Value()
-
-	// Step 3: Generate greeting message from Person (pure domain logic)
-	message := person.GreetingMessage()
-
-	// Step 4: Write to console via output port (STATIC DISPATCH)
-	// The writer.Write() call is statically dispatched because W is a concrete type
-	// at instantiation time. Context is passed for cancellation support.
-	writeResult := uc.writer.Write(ctx, message)
-
-	// Step 5: Propagate result (success or failure) to caller
-	return writeResult
+// formatGreeting creates the greeting message.
+// This is application-level formatting logic, not domain logic.
+// The format "Hello, <name>!" is an application decision.
+func formatGreeting(name string) string {
+	return "Hello, " + name + "!"
 }

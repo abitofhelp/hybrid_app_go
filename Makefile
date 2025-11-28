@@ -15,9 +15,9 @@
 PROJECT_NAME := hybrid_app_go
 BINARY_NAME := greeter
 
-.PHONY: all build build-dev build-release clean clean-coverage clean-deep compress \
+.PHONY: all build build-dev build-release clean clean-clutter clean-coverage clean-deep compress \
         deps help prereqs rebuild stats test test-all test-unit \
-        test-integration test-e2e test-framework test-coverage test-coverage-threshold \
+        test-integration test-e2e test-framework test-coverage test-coverage-threshold test-python \
         check check-arch lint format vet install-tools run diagrams
 
 # =============================================================================
@@ -70,6 +70,7 @@ help: ## Display this help message
 	@echo "  build-release      - Build optimized binary"
 	@echo "  run                - Build and run the greeter"
 	@echo "  clean              - Clean build artifacts"
+	@echo "  clean-clutter      - Remove temporary files and backups"
 	@echo "  clean-coverage     - Clean coverage data"
 	@echo "  clean-deep         - Deep clean (includes module cache)"
 	@echo "  compress           - Create compressed source archive (tar.gz)"
@@ -84,6 +85,7 @@ help: ## Display this help message
 	@echo "  test-coverage      - Run tests with per-layer coverage analysis"
 	@echo "  test-coverage-threshold - Run coverage with per-layer threshold checks"
 	@echo "                       (Domain: 100%, Application: 100%, Infra: 90%, Total: 85%)"
+	@echo "  test-python        - Run Python script tests (arch_guard.py validation)"
 	@echo ""
 	@echo "$(YELLOW)Quality & Architecture Commands:$(NC)"
 	@echo "  check              - Run all checks (lint + vet + arch)"
@@ -146,6 +148,11 @@ clean-coverage:
 	@find . -name "coverage.txt" -delete 2>/dev/null || true
 	@find . -name "coverage.html" -delete 2>/dev/null || true
 	@echo "$(GREEN)✓ Coverage artifacts cleaned$(NC)"
+
+clean-clutter: ## Remove temporary files, backups, and clutter
+	@echo "$(CYAN)Cleaning temporary files and clutter...$(NC)"
+	@$(PYTHON3) scripts/makefile/cleanup_temp_files.py
+	@echo "$(GREEN)✓ Temporary files removed$(NC)"
 
 compress:
 	@echo "$(CYAN)Creating compressed source archive...$(NC)"
@@ -316,6 +323,11 @@ test-coverage-threshold: test-coverage ## Run coverage with minimum threshold ch
 	fi
 	@echo "$(CYAN)───────────────────────────────────────────────────────────────$(NC)"
 	@echo "$(GREEN)✓ Coverage threshold check complete$(NC)"
+
+test-python: ## Run Python script tests (arch_guard.py validation)
+	@echo "$(GREEN)Running Python script tests...$(NC)"
+	@cd test/python && $(PYTHON3) -m pytest -v
+	@echo "$(GREEN)✓ Python tests complete$(NC)"
 
 # =============================================================================
 # Quality & Code Checking Commands

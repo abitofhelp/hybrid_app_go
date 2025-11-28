@@ -12,6 +12,7 @@
 //   - Smart constructors enforce validation
 //   - Returns Result[T] for validation (no panics)
 //   - Pure domain logic - ZERO external module dependencies
+//   - Domain provides data (GetName), Application formats output
 //
 // Usage:
 //
@@ -20,7 +21,7 @@
 //	result := valueobject.CreatePerson("Alice")
 //	if result.IsOk() {
 //	    person := result.Value()
-//	    message := person.GreetingMessage()
+//	    name := person.GetName()  // Use in application layer
 //	}
 package valueobject
 
@@ -93,17 +94,6 @@ func CreatePerson(name string) domerr.Result[Person] {
 //   - Post: Result length <= MaxNameLength (enforced by Create validation)
 func (p Person) GetName() string {
 	return p.name
-}
-
-// GreetingMessage generates a greeting message for this person.
-//
-// Pure domain logic - no side effects.
-//
-// Contract:
-//   - Post: Result always starts with "Hello, " and ends with "!"
-//   - Post: Result length is always > 9 (len("Hello, !") == 8)
-func (p Person) GreetingMessage() string {
-	return fmt.Sprintf("Hello, %s!", p.name)
 }
 
 // IsValid checks if the person satisfies the type invariant.

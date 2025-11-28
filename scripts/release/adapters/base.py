@@ -234,16 +234,25 @@ class BaseReleaseAdapter(ABC):
             stdout if capture_output, "SUCCESS" if succeeded, None on failure
         """
         try:
-            result = subprocess.run(
-                cmd,
-                cwd=cwd,
-                capture_output=capture_output,
-                text=True
-            )
+            if capture_output:
+                # Capture output with encoding error handling for colorized output
+                result = subprocess.run(
+                    cmd,
+                    cwd=cwd,
+                    capture_output=True,
+                    encoding='utf-8',
+                    errors='replace'  # Handle non-UTF-8 chars (e.g., ANSI color codes)
+                )
+            else:
+                result = subprocess.run(
+                    cmd,
+                    cwd=cwd,
+                    text=True
+                )
             if result.returncode != 0:
                 if check:
                     print(f"Command failed: {' '.join(cmd)}")
-                    if result.stderr:
+                    if capture_output and result.stderr:
                         print(f"Error: {result.stderr}")
                 return None
             return result.stdout if capture_output else "SUCCESS"
@@ -803,17 +812,45 @@ class BaseReleaseAdapter(ABC):
                     # Skip home directory references
                     if ref.startswith('~'):
                         continue
+                    # Skip pattern templates like <layer> or <component>
+                    if '<' in ref and '>' in ref:
+                        continue
                     # Normalize path
                     ref_clean = ref.lstrip('./')
                     ref_path = config.project_root / ref_clean
+
+                    # If file doesn't exist at root, check common subdirectories
                     if not ref_path.exists() and not ref_clean.startswith('http'):
-                        # Get line number for context
-                        idx = content.find(f'`{ref}`')
-                        if idx >= 0:
-                            line_num = content[:idx].count('\n') + 1
-                            discrepancies.append(
-                                f"  {rel_path}:{line_num}: Reference to non-existent file '{ref}'"
-                            )
+                        # Try common parent directories for test files
+                        found = False
+                        if ref_clean.startswith('test_'):
+                            for subdir in ['test/unit', 'test/integration', 'test/e2e']:
+                                alt_path = config.project_root / subdir / ref_clean
+                                if alt_path.exists():
+                                    found = True
+                                    break
+                        # Also check if it's inside a tree block (contextual reference)
+                        if not found:
+                            idx = content.find(f'`{ref}`')
+                            if idx >= 0:
+                                # Check if this reference is inside a tree block
+                                before_ref = content[:idx]
+                                last_tree_start = before_ref.rfind('```')
+                                if last_tree_start >= 0:
+                                    after_tree = before_ref[last_tree_start:]
+                                    # If we're inside a tree block (odd number of ``` before)
+                                    tree_delims_before = before_ref.count('```')
+                                    if tree_delims_before % 2 == 1:
+                                        # Inside a tree block - skip (contextual reference)
+                                        found = True
+
+                        if not found:
+                            idx = content.find(f'`{ref}`')
+                            if idx >= 0:
+                                line_num = content[:idx].count('\n') + 1
+                                discrepancies.append(
+                                    f"  {rel_path}:{line_num}: Reference to non-existent file '{ref}'"
+                                )
 
             except Exception as e:
                 print(f"  Warning: Could not read {file_path}: {e}")
@@ -826,17 +863,36 @@ class BaseReleaseAdapter(ABC):
                 content = md_file.read_text(encoding='utf-8')
                 rel_path = md_file.relative_to(config.project_root)
 
-                # Find directory tree blocks and validate top-level paths
+                # Find directory tree blocks and validate paths
                 tree_blocks = re.findall(r'```\n([^`]+)\n```', content)
                 for block in tree_blocks:
-                    # Only check if this looks like a directory tree starting from project root
+                    # Only check if this looks like a directory tree
                     if '/' in block and ('├' in block or '└' in block or '│' in block):
+                        # Detect the tree root (first line with a path ending in /)
+                        lines = block.strip().split('\n')
+                        tree_root = None
+                        for line in lines:
+                            # Look for tree root like "test/" or "src/"
+                            root_match = re.match(r'^(\w+)/$', line.strip())
+                            if root_match:
+                                tree_root = root_match.group(1)
+                                break
+
+                        # If tree has a root, validate directories relative to that root
+                        if tree_root and tree_root in top_level_dirs:
+                            # Tree is rooted at a valid directory (e.g., test/)
+                            # Skip validation - subdirectories are relative to tree root
+                            continue
+
+                        # Only validate trees that appear to be project-root relative
                         # Look for top-level directory references (direct children of root)
-                        # Pattern: matches directories at tree root level (not indented or minimally indented)
                         top_refs = re.findall(r'^[├└│─\s]{0,4}(\w+)/', block, re.MULTILINE)
                         for dir_name in top_refs:
                             # Skip project name references (hybrid_lib_go, hybrid_app_go, etc.)
                             project_name = config.project_root.resolve().name
+                            # Skip if it's already a known tree root (validated above)
+                            if dir_name == tree_root:
+                                continue
                             if dir_name not in top_level_dirs and dir_name not in ['hybrid', 'go', project_name]:
                                 discrepancies.append(
                                     f"  {rel_path}: Directory tree shows '{dir_name}/' but it doesn't exist at project root"

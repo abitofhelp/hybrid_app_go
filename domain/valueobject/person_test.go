@@ -63,45 +63,25 @@ func TestDomainValueObjectPerson(t *testing.T) {
 	}
 
 	// ========================================================================
-	// Test: GreetingMessage format
-	// ========================================================================
-
-	r4 := valueobject.CreatePerson("Bob")
-	if r4.IsOk() {
-		person := r4.Value()
-		greeting := person.GreetingMessage()
-		tf.RunTest("GreetingMessage - starts with 'Hello, '",
-			strings.HasPrefix(greeting, "Hello, "))
-		tf.RunTest("GreetingMessage - contains name",
-			strings.Contains(greeting, "Bob"))
-		tf.RunTest("GreetingMessage - ends with '!'",
-			strings.HasSuffix(greeting, "!"))
-		tf.RunTest("GreetingMessage - exact format",
-			greeting == "Hello, Bob!")
-	}
-
-	// ========================================================================
 	// Test: Name with spaces
 	// ========================================================================
 
-	r5 := valueobject.CreatePerson("Bob Smith")
-	tf.RunTest("Name with spaces - IsOk returns true", r5.IsOk())
-	if r5.IsOk() {
-		person := r5.Value()
+	r4 := valueobject.CreatePerson("Bob Smith")
+	tf.RunTest("Name with spaces - IsOk returns true", r4.IsOk())
+	if r4.IsOk() {
+		person := r4.Value()
 		tf.RunTest("Name with spaces - preserves spaces",
 			person.GetName() == "Bob Smith")
-		tf.RunTest("Name with spaces - greeting correct",
-			person.GreetingMessage() == "Hello, Bob Smith!")
 	}
 
 	// ========================================================================
 	// Test: Name with unicode characters
 	// ========================================================================
 
-	r6 := valueobject.CreatePerson("José García")
-	tf.RunTest("Unicode name - IsOk returns true", r6.IsOk())
-	if r6.IsOk() {
-		person := r6.Value()
+	r5 := valueobject.CreatePerson("José García")
+	tf.RunTest("Unicode name - IsOk returns true", r5.IsOk())
+	if r5.IsOk() {
+		person := r5.Value()
 		tf.RunTest("Unicode name - preserves unicode",
 			person.GetName() == "José García")
 	}
@@ -110,10 +90,10 @@ func TestDomainValueObjectPerson(t *testing.T) {
 	// Test: Single character name (boundary)
 	// ========================================================================
 
-	r7 := valueobject.CreatePerson("X")
-	tf.RunTest("Single char name - IsOk returns true", r7.IsOk())
-	if r7.IsOk() {
-		person := r7.Value()
+	r6 := valueobject.CreatePerson("X")
+	tf.RunTest("Single char name - IsOk returns true", r6.IsOk())
+	if r6.IsOk() {
+		person := r6.Value()
 		tf.RunTest("Single char name - GetName correct",
 			person.GetName() == "X")
 	}
@@ -123,10 +103,10 @@ func TestDomainValueObjectPerson(t *testing.T) {
 	// ========================================================================
 
 	maxName := strings.Repeat("a", valueobject.MaxNameLength)
-	r8 := valueobject.CreatePerson(maxName)
-	tf.RunTest("Max length name - IsOk returns true", r8.IsOk())
-	if r8.IsOk() {
-		person := r8.Value()
+	r7 := valueobject.CreatePerson(maxName)
+	tf.RunTest("Max length name - IsOk returns true", r7.IsOk())
+	if r7.IsOk() {
+		person := r7.Value()
 		tf.RunTest("Max length name - GetName correct",
 			person.GetName() == maxName)
 		tf.RunTest("Max length name - length is MaxNameLength",
