@@ -54,6 +54,7 @@ import (
 	"github.com/abitofhelp/hybrid_app_go/application/command"
 	apperr "github.com/abitofhelp/hybrid_app_go/application/error"
 	"github.com/abitofhelp/hybrid_app_go/application/port/inbound"
+	"github.com/abitofhelp/hybrid_app_go/internal/version"
 )
 
 // GreetCommand is a CLI command handler for the greet use case.
@@ -134,6 +135,7 @@ func (c *GreetCommand[UC]) Run(args []string) int {
 		if len(args) > 0 {
 			programName = args[0]
 		}
+		fmt.Fprintf(os.Stderr, "%s v%s\n", programName, version.Version)
 		fmt.Fprintf(os.Stderr, "Usage: %s <name>\n", programName)
 		fmt.Fprintf(os.Stderr, "Example: %s Alice\n", programName)
 		return 1 // Exit code 1 indicates error
