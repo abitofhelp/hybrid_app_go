@@ -944,3 +944,263 @@ class BaseReleaseAdapter(ABC):
 
         # Default to application
         return False
+
+    def validate_ai_assistance_section(self, config) -> Tuple[bool, List[str]]:
+        """
+        Validate that README.md contains the required AI Assistance & Authorship section.
+
+        This is a LEGALLY CRITICAL validation. The section MUST:
+        1. Exist in README.md
+        2. Appear BETWEEN Contributing and License sections (standard position 12)
+        3. Contain the required content about AI tools being tools, not authors
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            Tuple of (is_valid, list_of_error_messages)
+        """
+        print("Validating AI Assistance & Authorship section...")
+        errors = []
+
+        readme_path = config.project_root / "README.md"
+
+        # Check if README.md exists
+        if not readme_path.exists():
+            errors.append("  ✗ README.md not found")
+            return False, errors
+
+        try:
+            content = readme_path.read_text(encoding='utf-8')
+            lines = content.split('\n')
+
+            # Find the AI Assistance section
+            ai_section_pattern = r'^#{1,3}\s+AI\s+Assist\w*\s*[&]\s*Author\w*'
+            ai_section_match = re.search(ai_section_pattern, content, re.MULTILINE | re.IGNORECASE)
+
+            if not ai_section_match:
+                errors.append("  ✗ Missing 'AI Assistance & Authorship' section")
+                errors.append("    Required section heading: '## AI Assistance & Authorship'")
+                errors.append("    See documentation agent for required content")
+                return False, errors
+
+            ai_section_start = ai_section_match.start()
+            ai_section_line = content[:ai_section_start].count('\n') + 1
+            print(f"  ✓ Found AI Assistance section at line {ai_section_line}")
+
+            # Find key sections to validate placement
+            # Standard order: Contributing (11) -> AI Assistance (12) -> License (13)
+            contributing_match = re.search(
+                r'^#{1,3}\s+Contribut',
+                content, re.MULTILINE | re.IGNORECASE
+            )
+            license_match = re.search(
+                r'^#{1,3}\s+License\b',
+                content, re.MULTILINE | re.IGNORECASE
+            )
+
+            # Validate: AI section should appear AFTER Contributing (if present)
+            if contributing_match:
+                contributing_line = content[:contributing_match.start()].count('\n') + 1
+                if ai_section_line < contributing_line:
+                    errors.append(f"  ✗ AI Assistance section (line {ai_section_line}) appears BEFORE Contributing section (line {contributing_line})")
+                    errors.append("    It should appear AFTER Contributing section")
+                else:
+                    print(f"  ✓ AI Assistance section correctly placed after Contributing (line {contributing_line})")
+
+            # Validate: AI section should appear BEFORE License
+            if license_match:
+                license_line = content[:license_match.start()].count('\n') + 1
+                if ai_section_line > license_line:
+                    errors.append(f"  ✗ AI Assistance section (line {ai_section_line}) appears AFTER License section (line {license_line})")
+                    errors.append("    It MUST appear BEFORE License section")
+                else:
+                    print(f"  ✓ AI Assistance section correctly placed before License (line {license_line})")
+
+            # Validate required content keywords
+            # Extract the AI section content (until next heading or end)
+            ai_section_end_match = re.search(
+                r'\n#{1,3}\s+\S',
+                content[ai_section_start + len(ai_section_match.group()):],
+            )
+            if ai_section_end_match:
+                ai_section_content = content[ai_section_start:ai_section_start + len(ai_section_match.group()) + ai_section_end_match.start()]
+            else:
+                ai_section_content = content[ai_section_start:]
+
+            # Check for required phrases
+            required_phrases = [
+                (r'human\s+developer', "human developer(s)"),
+                (r'AI\s+(?:coding\s+)?assistant', "AI coding assistants"),
+                (r'tool', "tools (not authors)"),
+                (r'responsible|accountable|maintain', "responsibility/accountability"),
+            ]
+
+            missing_phrases = []
+            for pattern, description in required_phrases:
+                if not re.search(pattern, ai_section_content, re.IGNORECASE):
+                    missing_phrases.append(description)
+
+            if missing_phrases:
+                errors.append("  ⚠ AI Assistance section may be missing required content:")
+                for phrase in missing_phrases:
+                    errors.append(f"    - Missing reference to: {phrase}")
+            else:
+                print("  ✓ AI Assistance section contains required content")
+
+        except Exception as e:
+            errors.append(f"  ✗ Error reading README.md: {e}")
+            return False, errors
+
+        is_valid = len([e for e in errors if '✗' in e]) == 0
+
+        if is_valid:
+            print("  ✓ AI Assistance & Authorship section validation passed")
+        else:
+            print("\n  AI Assistance section validation FAILED:")
+            for error in errors:
+                print(error)
+
+        return is_valid, errors
+
+    def scan_git_history_for_ai_markers(self, config) -> Tuple[bool, List[str]]:
+        """
+        Scan entire git history for AI assistant attribution markers.
+
+        This validation checks all commits across all branches for prohibited
+        AI attribution patterns that violate our git attribution policy.
+
+        Patterns searched:
+        - Co-Authored-By: Claude
+        - Co-Authored-By: GPT
+        - Generated with [Claude Code]
+        - 🤖 Generated with
+        - AI-assisted commit
+        - Any anthropic.com or openai.com email addresses
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            Tuple of (is_clean, list_of_violations)
+            is_clean: True if NO AI markers found (clean history)
+            violations: List of commit hashes and details with AI markers
+        """
+        print("Scanning git history for AI assistant markers...")
+        violations = []
+
+        # Patterns to search for in commit messages
+        ai_patterns = [
+            r'Co-Authored-By:\s*Claude',
+            r'Co-Authored-By:\s*GPT',
+            r'Co-Authored-By:\s*Copilot',
+            r'Co-Authored-By:.*@anthropic\.com',
+            r'Co-Authored-By:.*@openai\.com',
+            r'Generated with \[Claude Code\]',
+            r'Generated with Claude',
+            r'🤖\s*Generated',
+            r'AI-assisted commit',
+            r'Generated by Claude',
+            r'Generated by GPT',
+            r'Generated by AI',
+            r'noreply@anthropic\.com',
+            r'noreply@openai\.com',
+        ]
+
+        combined_pattern = '|'.join(ai_patterns)
+
+        try:
+            # Get all commits from all branches
+            result = self.run_command(
+                ['git', 'log', '--all', '--format=%H|%s|%an|%ae', '--'],
+                config.project_root,
+                capture_output=True,
+                check=False
+            )
+
+            if result is None:
+                print("  ⚠ Could not read git history")
+                return True, []  # Assume clean if can't read
+
+            commits = result.strip().split('\n') if result.strip() else []
+            print(f"  Scanning {len(commits)} commits...")
+
+            for commit_line in commits:
+                if not commit_line or '|' not in commit_line:
+                    continue
+
+                parts = commit_line.split('|', 3)
+                if len(parts) < 4:
+                    continue
+
+                commit_hash, subject, author_name, author_email = parts
+
+                # Check author name/email
+                if re.search(r'claude|anthropic|openai|gpt|copilot',
+                            f"{author_name} {author_email}", re.IGNORECASE):
+                    violations.append(
+                        f"  Commit {commit_hash[:8]}: Author contains AI reference\n"
+                        f"    Author: {author_name} <{author_email}>"
+                    )
+                    continue
+
+                # Check commit subject
+                if re.search(combined_pattern, subject, re.IGNORECASE):
+                    violations.append(
+                        f"  Commit {commit_hash[:8]}: Subject contains AI marker\n"
+                        f"    Subject: {subject[:60]}..."
+                    )
+                    continue
+
+                # Check full commit message
+                full_msg_result = self.run_command(
+                    ['git', 'log', '-1', '--format=%B', commit_hash],
+                    config.project_root,
+                    capture_output=True,
+                    check=False
+                )
+
+                if full_msg_result and re.search(combined_pattern, full_msg_result, re.IGNORECASE):
+                    # Find which pattern matched
+                    for pattern in ai_patterns:
+                        match = re.search(pattern, full_msg_result, re.IGNORECASE)
+                        if match:
+                            violations.append(
+                                f"  Commit {commit_hash[:8]}: Message contains AI marker\n"
+                                f"    Subject: {subject[:50]}...\n"
+                                f"    Match: {match.group()}"
+                            )
+                            break
+
+            # Also check all branches for AI-related names
+            branches_result = self.run_command(
+                ['git', 'branch', '-a', '--format=%(refname:short)'],
+                config.project_root,
+                capture_output=True,
+                check=False
+            )
+
+            if branches_result:
+                for branch in branches_result.strip().split('\n'):
+                    if re.search(r'claude|gpt|copilot|ai-gen', branch, re.IGNORECASE):
+                        violations.append(f"  Branch '{branch}': Name contains AI reference")
+
+        except Exception as e:
+            print(f"  ⚠ Error scanning git history: {e}")
+            return True, []  # Assume clean on error
+
+        is_clean = len(violations) == 0
+
+        if is_clean:
+            print(f"  ✓ Git history is clean - no AI markers found in {len(commits)} commits")
+        else:
+            print(f"\n  ⚠ Found {len(violations)} AI marker(s) in git history:")
+            for violation in violations:
+                print(violation)
+            print("\n  These commits need to be cleaned from git history before release.")
+            print("  Options:")
+            print("    1. git rebase -i to edit commit messages")
+            print("    2. git filter-branch to remove patterns")
+            print("    3. BFG Repo-Cleaner for large-scale cleanup")
+
+        return is_clean, violations

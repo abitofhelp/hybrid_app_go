@@ -1,9 +1,6 @@
-# Go Enterprise Starter with Hybrid DDD/Clean/Hexagonal Architecture
+# Enterprise Starter with Hybrid DDD/Clean/Hexagonal Architecture
 
-**Version:** 1.0.1  
-**Date:** November 26, 2025  
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.  
-**License:** BSD-3-Clause  
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8.svg)](https://go.dev)
 
 ## Overview
 
@@ -18,6 +15,18 @@ This is a **desktop/enterprise application template** showcasing:
 - **Railway-Oriented Programming** with Result monads (no panics across boundaries)
 - **Presentation Isolation** pattern (only Domain is shareable across apps)
 - **Multi-Module Workspace** (compiler-enforced boundaries)
+
+## Features
+
+- ✅ Multi-module workspace structure with go.work
+- ✅ Custom domain Result/Option monads (ZERO external module dependencies)
+- ✅ Static dispatch via generics (zero-overhead DI)
+- ✅ Application.Error re-export pattern
+- ✅ Module boundary enforcement via go.mod
+- ✅ Context propagation for cancellation/timeout support
+- ✅ Panic recovery at infrastructure boundaries
+- ✅ Concurrency-ready patterns (documented, ready for extension)
+- ✅ Comprehensive Makefile automation
 
 ## Architecture
 
@@ -110,67 +119,34 @@ return greetCommand.Run(os.Args)
 - ✅ **Static dispatch** (compiler knows exact types)
 - ✅ **Inlining potential** (optimizer can inline method calls)
 
-## Error Handling: Railway-Oriented Programming
-
-**NO PANICS across layer boundaries.** All errors propagate via domain Result monad:
-
-```go
-// Domain defines custom Result[T] monad (ZERO external module dependencies)
-import (
-    domerr "github.com/abitofhelp/hybrid_app_go/domain/error"
-    "github.com/abitofhelp/hybrid_app_go/application/model"
-    "github.com/abitofhelp/hybrid_app_go/domain/valueobject"
-)
-
-// Usage Pattern
-func Execute(cmd GreetCommand) domerr.Result[model.Unit] {
-    personResult := valueobject.CreatePerson(cmd.Name)
-
-    if personResult.IsError() {
-        return domerr.Err[model.Unit](personResult.ErrorInfo())
-    }
-
-    person := personResult.Value()
-    return writer(person.GreetingMessage())
-}
-```
-
-**Error Flow:**
-1. **Domain:** Validates, returns `Err` variant if invalid
-2. **Application:** Orchestrates, propagates errors upward
-3. **Infrastructure:** Catches panics at boundaries, converts to `Err` via recovery pattern
-4. **Presentation:** Pattern matches on `ErrorKind`, displays user-friendly messages
-
-## Building
+## Quick Start
 
 ### Prerequisites
 
 - **Go 1.23+** (for workspace support)
 - **golangci-lint** (optional, for linting)
 
-### Build Commands
+### Building
 
 ```bash
 # Build the project
 make build
 
-# Run the application
-make run NAME="Alice"
-
-# Run specific targets
-./bin/greeter Alice
-
 # Clean artifacts
 make clean
 
-# Run tests
-make test
+# Rebuild from scratch
+make rebuild
+```
 
-# Format code
-make fmt
+### Running
 
-# Run linter
-make lint
+```bash
+# Run the application
+make run NAME="Alice"
+
+# Or run directly
+./bin/greeter Alice
 ```
 
 ## Usage
@@ -195,7 +171,7 @@ make lint
 # Exit code: 1
 ```
 
-## Exit Codes
+### Exit Codes
 
 - **0**: Success
 - **1**: Failure (validation error, infrastructure error, or missing arguments)
@@ -218,144 +194,13 @@ make test-unit
 - **Integration tests**: `test/integration/` with `//go:build integration` tag
 - **E2E tests**: `test/e2e/` with `//go:build e2e` tag
 
-## Dependencies
+## Documentation
 
-Managed by Go modules (`go.mod` per module):
+- 📚 **[Go Workspaces](https://go.dev/doc/tutorial/workspaces)** - Multi-module workspace tutorial
+- 🏗️ **[Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)** - Architecture pattern
+- 🚂 **[Railway-Oriented Programming](https://fsharpforfunandprofit.com/rop/)** - Error handling pattern
 
-```
-testify v1.11.1    # Testing assertions (test module only, NOT domain)
-```
-
-**Note:** Domain layer has ZERO external module dependencies. Custom Result/Option monads are implemented in `domain/error/result.go` and `domain/valueobject/option.go`.
-
-## Module Boundaries
-
-**Enforced by go.mod dependencies:**
-
-- **domain**: ZERO external module dependencies (custom Result/Option types)
-- **application**: domain ONLY
-- **infrastructure**: application + domain
-- **presentation**: application ONLY (NOT domain)
-- **bootstrap**: ALL modules
-- **cmd/greeter**: bootstrap ONLY
-
-**Compiler enforces these rules** - attempting to import forbidden packages results in build errors.
-
-## Key Design Patterns
-
-### 1. Minimal Entry Point
-
-**Main (cmd/greeter/main.go)** - Only 3 lines:
-
-```go
-func main() {
-    exitCode := cli.Run(os.Args)
-    os.Exit(exitCode)
-}
-```
-
-### 2. Result Monad Pattern
-
-**Railway-Oriented Programming:**
-- Ok track: Successful computation continues
-- Error track: Error propagates (short-circuit)
-- Forces explicit error handling at compile time
-- No panics thrown across boundaries
-
-### 3. Application.Error Re-export Pattern
-
-**Problem:** Presentation cannot access Domain directly  
-**Solution:** Application re-exports Domain types for Presentation use  
-**Implementation:** Type aliases and variable re-exports (zero overhead)
-
-### 4. Static Dispatch via Generics
-
-**Pattern:** Generic types with interface constraints
-**Wiring:** Bootstrap instantiates with concrete type parameters
-**Benefit:** Compile-time resolution, methods devirtualized (zero runtime overhead)
-
-### 5. Concurrency-Ready Pattern
-
-This starter is **concurrency-ready** without implementing actual goroutines. The patterns are in place for when you need them:
-
-**Context Propagation:**
-```go
-// Use case accepts context for cancellation/timeout
-func (uc *GreetUseCase) Execute(ctx context.Context, cmd GreetCommand) domerr.Result[model.Unit]
-
-// Infrastructure checks context before I/O
-select {
-case <-ctx.Done():
-    return domerr.Err[model.Unit](apperr.NewInfrastructureError(
-        fmt.Sprintf("write cancelled: %v", ctx.Err())))
-default:
-    // proceed with operation
-}
-```
-
-**Panic Recovery at Boundaries:**
-```go
-// Infrastructure adapters recover panics and convert to Result errors
-func (cw *ConsoleWriter) Write(ctx context.Context, message string) (result domerr.Result[model.Unit]) {
-    defer func() {
-        if r := recover(); r != nil {
-            result = domerr.Err[model.Unit](domerr.NewInfrastructureError(
-                fmt.Sprintf("write panicked: %v", r)))
-        }
-    }()
-    // ... perform I/O
-    return domerr.Ok(model.Unit{})
-}
-```
-
-**When You Add Goroutines:**
-- Pass `ctx` to all goroutines for cancellation signaling
-- Use `ctx.Done()` channel in `select` statements
-- Map `ctx.Err()` to `InfrastructureError` at boundaries
-- No "spawn-and-forget" goroutines (always handle lifecycle)
-- Use channels or `sync.WaitGroup` for coordination
-
-**Example Extension (not in starter):**
-```go
-// Background monitor pattern (add when needed)
-func StartMonitor(ctx context.Context, events chan<- Event) {
-    go func() {
-        ticker := time.NewTicker(5 * time.Second)
-        defer ticker.Stop()
-        for {
-            select {
-            case <-ctx.Done():
-                return // graceful shutdown
-            case <-ticker.C:
-                events <- checkHealth()
-            }
-        }
-    }()
-}
-```
-
-### 6. Go 1.23 Features
-
-- **Workspaces** (`go.work` for multi-module projects)
-- **Generics** (custom domain Result[T], Option[T] types)
-- **Type parameters** (used in domain monads)
-
-## Workspace Management
-
-This project uses Go workspaces to manage multiple modules:
-
-```bash
-# Sync workspace (after pulling changes)
-go work sync
-
-# Add a new module to workspace
-go work use ./new-module
-
-# Check workspace status
-go work edit -print
-```
-
-## Standards Compliance
+## Code Standards
 
 This project follows:
 - **Go Language Standards** (`~/.claude/agents/go.md`)
@@ -370,33 +215,6 @@ This project follows:
 4. **Module Boundaries:** Compiler-enforced via go.mod
 5. **Static Dispatch:** Generic types with interface constraints for zero-overhead DI
 6. **Table-Driven Tests:** Using testify assertions (test module, NOT domain)
-
-## Comparison with Ada Version
-
-| Aspect                  | Ada (Original)              | Go (This Port)                     |
-|-------------------------|-----------------------------|------------------------------------|
-| **Error Handling**      | Domain.Error.Result monad   | domain/error Result[T] monad       |
-| **Dependency Injection**| Generic instantiation       | Static dispatch via generics       |
-| **String Handling**     | Bounded strings             | Regular strings (GC handles it)    |
-| **Memory Model**        | Stack allocation            | Stack + GC                         |
-| **Polymorphism**        | Compile-time (generics)     | Compile-time (generics)            |
-| **Module Boundaries**   | GPR project dependencies    | go.mod dependencies                |
-| **Contracts**           | Pre/Post aspects            | Comments + assertions              |
-
-## Project Status
-
-✅ **Completed:**
-- Multi-module workspace structure with go.work
-- Custom domain Result/Option monads (ZERO external module dependencies)
-- Static dispatch via generics (zero-overhead DI)
-- Application.Error re-export pattern
-- Module boundary enforcement via go.mod
-- Comprehensive Makefile automation
-- All layers ported from Ada to Go
-- Functioning CLI application
-- Context propagation for cancellation/timeout support
-- Panic recovery at infrastructure boundaries
-- Concurrency-ready patterns (documented, ready for extension)
 
 ## Creating a New Project
 
@@ -422,25 +240,47 @@ python3 -m brand_project \
 - Import statements in Go source files
 - Documentation and README files
 
-**Prerequisites:**
-- Python 3.8+
-- Source template (this repository)
-- Target directory (will be created)
+## Contributing
 
-The script auto-detects Go vs Ada projects and applies language-specific transformations.
+This project is not open to external contributions at this time.
 
-## Learning Resources
+## AI Assistance & Authorship
 
-- [Go Workspaces](https://go.dev/doc/tutorial/workspaces)
-- [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
-- [Railway-Oriented Programming](https://fsharpforfunandprofit.com/rop/)
+This project — including its source code, tests, documentation, and other deliverables — is designed, implemented, and maintained by human developers, with Michael Gardner as the Principal Software Engineer and project lead.
+
+We use AI coding assistants (such as OpenAI GPT models and Anthropic Claude Code) as part of the development workflow to help with:
+
+- drafting and refactoring code and tests,
+- exploring design and implementation alternatives,
+- generating or refining documentation and examples,
+- and performing tedious and error-prone chores.
+
+AI systems are treated as tools, not authors. All changes are reviewed, adapted, and integrated by the human maintainers, who remain fully responsible for the architecture, correctness, and licensing of this project.
 
 ## License
 
-BSD-3-Clause - See LICENSE file in project root.
+Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
+
+Licensed under the BSD-3-Clause License. See [LICENSE](LICENSE) for details.
 
 ## Author
 
-Michael Gardner  
-A Bit of Help, Inc.  
+Michael Gardner
+A Bit of Help, Inc.
 https://github.com/abitofhelp
+
+## Project Status
+
+**Status**: Production Ready (v1.0.1)
+
+- ✅ Multi-module workspace structure with go.work
+- ✅ Custom domain Result/Option monads (ZERO external module dependencies)
+- ✅ Static dispatch via generics (zero-overhead DI)
+- ✅ Application.Error re-export pattern
+- ✅ Module boundary enforcement via go.mod
+- ✅ Comprehensive Makefile automation
+- ✅ All layers ported from Ada to Go
+- ✅ Functioning CLI application
+- ✅ Context propagation for cancellation/timeout support
+- ✅ Panic recovery at infrastructure boundaries
+- ✅ Concurrency-ready patterns (documented, ready for extension)

@@ -1,11 +1,11 @@
 # Changelog
 
-**Version:** 1.0.1  
-**Date:** November 26, 2025  
-**SPDX-License-Identifier:** BSD-3-Clause  
-**License File:** See the LICENSE file in the project root.  
-**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.  
-**Status:** Released  
+**Version:** 1.0.2
+**Date:** November 28, 2025
+**SPDX-License-Identifier:** BSD-3-Clause
+**License File:** See the LICENSE file in the project root.
+**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
+**Status:** Released
 
 
 All notable changes to Hybrid_App_Go will be documented in this file.
@@ -24,6 +24,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+
+---
+
+## [1.0.2] - 2025-11-28
+
+### Changed
+- Standardize README.md to new documentation format with proper section order
+- Sync release scripts with hybrid_app_ada template
+
+### Added
+- AI Assistance & Authorship section in README.md (legally required disclosure)
+- Embed version generation in Ada adapter (no external script needed)
+- AI Assistance section validation (Step 0d) checks new placement rule
+  (after Contributing, before License)
+
+### Fixed
+- Release script AI validation now checks correct section placement
 
 ---
 

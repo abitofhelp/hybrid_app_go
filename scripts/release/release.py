@@ -360,6 +360,46 @@ You can:
         if not prompt_user_continue(message):
             return False
 
+    # Step 0d: Validate AI Assistance & Authorship section (LEGALLY CRITICAL)
+    print_info("\nStep 0d: Validating AI Assistance & Authorship section...")
+    is_valid, ai_errors = adapter.validate_ai_assistance_section(config)
+    if not is_valid:
+        print_error("AI Assistance & Authorship section validation FAILED")
+        print_error("This is a LEGALLY CRITICAL requirement for all releases")
+        print_info("")
+        print_info("Required section in README.md:")
+        print_info("  ### AI Assistance & Authorship")
+        print_info("")
+        print_info("  This project — including its source code, tests, documentation,")
+        print_info("  and other deliverables — is designed, implemented, and maintained")
+        print_info("  by human developers, with Michael Gardner as the Principal Software")
+        print_info("  Engineer and project lead.")
+        print_info("")
+        print_info("  [... see documentation agent for full required content ...]")
+        print_info("")
+        print_info("Placement: After project description, BEFORE installation instructions")
+        return False
+
+    # Step 0e: Scan git history for AI markers (CRITICAL - git hygiene)
+    print_info("\nStep 0e: Scanning git history for AI assistant markers...")
+    is_clean, git_violations = adapter.scan_git_history_for_ai_markers(config)
+    if not is_clean:
+        print_warning(f"Found {len(git_violations)} AI marker(s) in git history")
+        message = f"""Git history contains {len(git_violations)} AI attribution marker(s).
+
+These MUST be removed before release per our git attribution policy.
+
+Options to clean git history:
+1. For recent commits: git rebase -i HEAD~N and edit messages
+2. For older commits: git filter-branch or BFG Repo-Cleaner
+3. Contact the maintainer for assistance
+
+You can:
+- Press ENTER to acknowledge and continue (if cleanup is planned)
+- Press 'q' to quit and clean history before releasing"""
+        if not prompt_user_continue(message):
+            return False
+
     # Step 1: Clean up temporary files
     print_info("\nStep 1: Cleaning up temporary files...")
     if not adapter.cleanup_temp_files(config):
