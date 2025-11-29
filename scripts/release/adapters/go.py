@@ -30,7 +30,9 @@ class GoReleaseAdapter(BaseReleaseAdapter):
 
     Handles:
         - go.mod module information extraction
-        - Version package generation (internal/version/version.go)
+        - Version package generation:
+          - Apps: internal/version/version.go (unexported)
+          - Libraries: version/version.go (exported for consumers)
         - Build via 'make build' or 'go build'
         - Test via 'make test' or 'go test'
     """
@@ -108,12 +110,64 @@ class GoReleaseAdapter(BaseReleaseAdapter):
         print(f"  Version will be set in generated version package")
         return True
 
+    def _is_library_project(self, config) -> bool:
+        """
+        Detect if project is a library (no main package) vs an application.
+
+        Libraries export version in version/ for consumer access.
+        Applications keep version internal in internal/version/.
+
+        Args:
+            config: ReleaseConfig instance
+
+        Returns:
+            True if library, False if application
+        """
+        # Check for cmd/ directory (common app structure)
+        if (config.project_root / 'cmd').exists():
+            return False
+
+        # Check for main.go in root
+        if (config.project_root / 'main.go').exists():
+            return False
+
+        # Check for bin/ directory with executables expected
+        if (config.project_root / 'bin').exists():
+            # Check if Makefile builds to bin/
+            makefile = config.project_root / 'Makefile'
+            if makefile.exists():
+                content = makefile.read_text(encoding='utf-8')
+                if 'bin/' in content and 'go build' in content:
+                    return False
+
+        # Check project name heuristics
+        project_name = config.project_root.name.lower()
+        if project_name.endswith('_app') or project_name.startswith('app_'):
+            return False
+        if project_name.endswith('_lib') or project_name.startswith('lib_'):
+            return True
+
+        # Check module name for 'lib' indicator
+        go_mod = config.project_root / 'go.mod'
+        if go_mod.exists():
+            content = go_mod.read_text(encoding='utf-8')
+            match = re.search(r'^module\s+(\S+)', content, re.MULTILINE)
+            if match:
+                module_name = match.group(1).lower()
+                if '_lib' in module_name or '/lib' in module_name:
+                    return True
+
+        # Default to application (internal version)
+        return False
+
     def generate_version_file(self, config) -> bool:
         """
         Generate Version Go package from release version.
 
         Embeds version generation logic directly - no external script needed.
-        Output: internal/version/version.go
+        Output path depends on project type:
+          - Applications: internal/version/version.go (unexported)
+          - Libraries: version/version.go (exported for consumers)
 
         Args:
             config: ReleaseConfig instance
@@ -138,6 +192,10 @@ class GoReleaseAdapter(BaseReleaseAdapter):
             prerelease = prerelease or ''
             build = build or ''
 
+            # Determine if library or application
+            is_library = self._is_library_project(config)
+            project_type = "library" if is_library else "application"
+
             # Get module path from go.mod for proper import path
             go_mod = config.project_root / 'go.mod'
             module_path = ""
@@ -148,7 +206,7 @@ class GoReleaseAdapter(BaseReleaseAdapter):
                     module_path = match.group(1)
 
             # Generate Go package source
-            go_code = f'''// Package version provides version information for the application.
+            go_code = f'''// Package version provides version information for the {project_type}.
 //
 // AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 //
@@ -199,13 +257,22 @@ func IsDevelopment() bool {{ return Prerelease == "dev" }}
 func IsStable() bool {{ return !IsPrerelease() }}
 '''
 
-            # Write output file to internal/version/version.go
-            output_path = config.project_root / 'internal' / 'version' / 'version.go'
+            # Determine output path based on project type
+            if is_library:
+                # Libraries: exported version/ for consumer access
+                output_path = config.project_root / 'version' / 'version.go'
+                output_rel = 'version/version.go'
+            else:
+                # Applications: internal/version/ (unexported)
+                output_path = config.project_root / 'internal' / 'version' / 'version.go'
+                output_rel = 'internal/version/version.go'
+
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(go_code, encoding='utf-8')
 
             print(f"  Version: {version_str}")
-            print(f"  Generated: internal/version/version.go")
+            print(f"  Project type: {project_type}")
+            print(f"  Generated: {output_rel}")
             print(f"  Package: version")
             return True
 

@@ -25,7 +25,7 @@ package version
 const (
 	Major = 1
 	Minor = 0
-	Patch = 2
+	Patch = 0
 )
 
 // Prerelease identifier (e.g., "dev", "alpha.1", "beta.2", "rc.1")
@@ -37,7 +37,7 @@ const Prerelease = ""
 const BuildMetadata = ""
 
 // Version is the full version string (e.g., "0.1.0-dev", "1.2.3")
-const Version = "1.0.2"
+const Version = "1.0.0"
 
 // IsPrerelease returns true if this is a pre-release version
 func IsPrerelease() bool { return Prerelease != "" }

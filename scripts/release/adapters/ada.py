@@ -301,7 +301,10 @@ package {ada_package}.Version is
    function Is_Prerelease return Boolean is (Prerelease'Length > 0);
 
    --  Check if this is a development version
+   --  Note: Condition may be always False for stable releases (expected)
+   pragma Warnings (Off, "condition is always*");
    function Is_Development return Boolean is (Prerelease = "dev");
+   pragma Warnings (On, "condition is always*");
 
    --  Check if this is a stable release
    function Is_Stable return Boolean is (not Is_Prerelease);
@@ -309,14 +312,14 @@ package {ada_package}.Version is
 end {ada_package}.Version;
 '''
 
-            # Write output file
-            output_path = config.project_root / 'src' / f'{project_name}-version.ads'
+            # Write output file to src/version/ (cross-cutting, outside hexagonal layers)
+            output_path = config.project_root / 'src' / 'version' / f'{project_name}-version.ads'
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(ada_code, encoding='utf-8')
 
             print(f"  Project: {project_name}")
             print(f"  Version: {version_str}")
-            print(f"  Generated: src/{project_name}-version.ads")
+            print(f"  Generated: src/version/{project_name}-version.ads")
             print(f"  Package: {ada_package}.Version")
             return True
 

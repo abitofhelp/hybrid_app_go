@@ -406,6 +406,14 @@ class BaseReleaseAdapter(ABC):
             if title_idx is None:
                 return False
 
+            # Check if header already exists (any bold metadata after title)
+            # Look at lines immediately after title for existing header content
+            if title_idx + 1 < len(lines):
+                next_lines = ''.join(lines[title_idx + 1:title_idx + 10])
+                if re.search(r'\*\*(?:Version|Project|Date|Copyright|SPDX)', next_lines):
+                    # Header already exists, don't add another
+                    return False
+
             # Create header
             status = "Unreleased" if config.is_prerelease else "Released"
             header = (
@@ -821,28 +829,40 @@ class BaseReleaseAdapter(ABC):
 
                     # If file doesn't exist at root, check common subdirectories
                     if not ref_path.exists() and not ref_clean.startswith('http'):
-                        # Try common parent directories for test files
                         found = False
+
+                        # Try common parent directories for test files
                         if ref_clean.startswith('test_'):
                             for subdir in ['test/unit', 'test/integration', 'test/e2e']:
                                 alt_path = config.project_root / subdir / ref_clean
                                 if alt_path.exists():
                                     found = True
                                     break
+
+                        # Search entire project for the filename if not found
+                        # This handles cases where docs reference files by name only
+                        if not found:
+                            filename = Path(ref_clean).name
+                            matches = list(config.project_root.glob(f"**/{filename}"))
+                            # Exclude vendor, node_modules, .git, alire/cache
+                            matches = [m for m in matches if not any(
+                                excl in str(m) for excl in
+                                ['vendor/', 'node_modules/', '.git/', 'alire/cache/']
+                            )]
+                            if matches:
+                                found = True
+
                         # Also check if it's inside a tree block (contextual reference)
                         if not found:
                             idx = content.find(f'`{ref}`')
                             if idx >= 0:
                                 # Check if this reference is inside a tree block
                                 before_ref = content[:idx]
-                                last_tree_start = before_ref.rfind('```')
-                                if last_tree_start >= 0:
-                                    after_tree = before_ref[last_tree_start:]
-                                    # If we're inside a tree block (odd number of ``` before)
-                                    tree_delims_before = before_ref.count('```')
-                                    if tree_delims_before % 2 == 1:
-                                        # Inside a tree block - skip (contextual reference)
-                                        found = True
+                                # If we're inside a tree block (odd number of ``` before)
+                                tree_delims_before = before_ref.count('```')
+                                if tree_delims_before % 2 == 1:
+                                    # Inside a tree block - skip (contextual reference)
+                                    found = True
 
                         if not found:
                             idx = content.find(f'`{ref}`')
