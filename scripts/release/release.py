@@ -400,6 +400,26 @@ You can:
         if not prompt_user_continue(message):
             return False
 
+    # Step 0f: Scan for TODO/FIXME/STUB markers
+    print_info("\nStep 0f: Scanning for TODO/FIXME/STUB markers...")
+    is_clean, code_markers = adapter.scan_for_code_markers(config)
+    if not is_clean:
+        message = f"""Found {len(code_markers)} TODO/FIXME/STUB marker(s) in source code.
+
+These markers indicate incomplete or temporary code that should be
+reviewed before release:
+
+- TODO: Planned work not yet completed
+- FIXME: Known issues requiring fixes
+- STUB: Placeholder implementations
+- XXX/HACK: Technical debt or workarounds
+
+You can:
+- Press ENTER to acknowledge and continue (if these are acceptable for release)
+- Press 'q' to quit and address the markers before releasing"""
+        if not prompt_user_continue(message):
+            return False
+
     # Step 1: Clean up temporary files
     print_info("\nStep 1: Cleaning up temporary files...")
     if not adapter.cleanup_temp_files(config):
