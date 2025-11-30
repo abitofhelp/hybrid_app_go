@@ -50,8 +50,13 @@ import sys
 from pathlib import Path
 from typing import Set, Dict, List
 
-from .models import ArchitectureViolation
-from .adapters.base import LanguageAdapter
+# Support both direct script execution and module import
+try:
+    from .models import ArchitectureViolation
+    from .adapters.base import LanguageAdapter
+except ImportError:
+    from models import ArchitectureViolation
+    from adapters.base import LanguageAdapter
 
 
 class ArchitectureGuard:
