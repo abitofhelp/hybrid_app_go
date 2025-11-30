@@ -9,15 +9,17 @@
 ## Directory Structure
 
 ```
-scripts/
+scripts/python/
 ├── arch_guard/        # Architecture validation tool
 ├── brand_project/     # Project template branding tool
+├── makefile/          # Makefile helper scripts
+├── release/           # Release management tool
 └── common.py          # Shared utilities
 ```
 
 ---
 
-## Architecture Guard (`scripts/arch_guard/`)
+## Architecture Guard (`scripts/python/arch_guard/`)
 
 Validates hexagonal architecture boundaries in Go projects.
 
@@ -26,7 +28,7 @@ Validates hexagonal architecture boundaries in Go projects.
 **Purpose:** Validate hexagonal architecture boundaries
 
 **What it does:**
-- Enforces layer dependency rules (Domain -> Application -> Infrastructure -> Presentation)
+- Enforces layer dependency rules (Domain -> Application -> Infrastructure -> API/outer layers)
 - Detects illegal imports that violate architecture boundaries
 - Validates that Domain layer has zero external dependencies
 - Parses go.mod files (including multi-line require blocks)
@@ -37,7 +39,7 @@ Validates hexagonal architecture boundaries in Go projects.
 make check-arch
 
 # Direct execution
-python3 scripts/arch_guard/arch_guard.py
+python3 scripts/python/arch_guard/arch_guard.py
 ```
 
 **Makefile Target:** `check-arch`
@@ -48,7 +50,7 @@ python3 scripts/arch_guard/arch_guard.py
 
 ---
 
-## Project Branding (`scripts/brand_project/`)
+## Project Branding (`scripts/python/brand_project/`)
 
 A unified tool to instantiate new projects from hybrid_app/hybrid_lib templates.
 
@@ -64,22 +66,22 @@ A unified tool to instantiate new projects from hybrid_app/hybrid_lib templates.
 
 ```bash
 # From project root - dry run (preview changes)
-python3 scripts/brand_project/brand_project.py --git-repo github.com/account/my_app --dry-run
+python3 scripts/python/brand_project/brand_project.py --git-repo github.com/account/my_app --dry-run
 
 # From project root - create in current directory
-python3 scripts/brand_project/brand_project.py --git-repo github.com/account/my_app
+python3 scripts/python/brand_project/brand_project.py --git-repo github.com/account/my_app
 
 # Specify output directory
-python3 scripts/brand_project/brand_project.py --git-repo github.com/account/my_app -o ~/projects
+python3 scripts/python/brand_project/brand_project.py --git-repo github.com/account/my_app -o ~/projects
 
 # As a module
 python3 -m scripts.brand_project --git-repo github.com/account/my_app --dry-run
 
 # With explicit source and output directories
-python3 scripts/brand_project/brand_project.py --git-repo github.com/account/my_app --source ../hybrid_lib_go -o /tmp
+python3 scripts/python/brand_project/brand_project.py --git-repo github.com/account/my_app --source ../hybrid_lib_go -o /tmp
 
 # Verbose output
-python3 scripts/brand_project/brand_project.py --git-repo github.com/account/my_app -v
+python3 scripts/python/brand_project/brand_project.py --git-repo github.com/account/my_app -v
 ```
 
 ### Options
@@ -127,7 +129,7 @@ brand_project/
 
 ---
 
-## Shared Utilities (`scripts/common.py`)
+## Shared Utilities (`scripts/python/common.py`)
 
 **Purpose:** Shared utilities and helper functions
 
@@ -152,7 +154,7 @@ Scripts are invoked through clean Makefile targets:
 ```makefile
 # Architecture validation
 check-arch:
-	@python3 scripts/arch_guard/arch_guard.py
+	@python3 scripts/python/arch_guard/arch_guard.py
 ```
 
 ---
@@ -164,9 +166,9 @@ check-arch:
 When creating new automation scripts:
 
 1. **Choose the right location:**
-   - `scripts/arch_guard/` - If related to architecture validation
-   - `scripts/brand_project/` - If part of branding workflow
-   - `scripts/` root - If general-purpose utility
+   - `scripts/python/arch_guard/` - If related to architecture validation
+   - `scripts/python/brand_project/` - If part of branding workflow
+   - `scripts/python/` root - If general-purpose utility
 
 2. **Use Python 3** - Maximize portability and readability
 3. **Import from common.py** - Reuse utilities

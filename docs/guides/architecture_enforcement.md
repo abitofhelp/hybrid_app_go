@@ -10,9 +10,25 @@
 
 This document explains how to enforce hexagonal/clean architecture rules in Ada projects using GPRbuild and the architecture guard script.
 
-## Architecture Rules
+## Two Architectural Patterns
 
-The Hybrid App Go library follows strict center-seeking dependency rules:
+Our hybrid DDD/Clean/Hexagonal architecture supports two project types with different layer structures:
+
+| Aspect | Application (5-layer) | Library (4-layer) |
+|--------|----------------------|-------------------|
+| **Outer layers** | Bootstrap + Presentation | API (3-package pattern) |
+| **Composition root** | Bootstrap | API.Desktop |
+| **Public interface** | Presentation (CLI/UI) | API facade |
+| **SPARK boundary** | Optional | API.Operations |
+| **Consumer** | End users | Other Ada projects |
+
+Both patterns share the same inner core: **Domain → Application → Infrastructure**.
+
+---
+
+## Application Architecture (5-Layer)
+
+For executable projects (CLI tools, servers, embedded apps):
 
 ```
 ┌──────────────────────────────────────┐
@@ -38,13 +54,84 @@ The Hybrid App Go library follows strict center-seeking dependency rules:
 └──────────────────────────────────────┘
 ```
 
-**Key Rules:**  
+**Application Layer Rules:**
 - **Domain**: ZERO dependencies (innermost core)
 - **Application**: Depends ONLY on Domain
 - **Infrastructure**: Depends on Application + Domain
 - **Presentation**: Depends ONLY on Application (NOT Domain, NOT Infrastructure)
 - **Bootstrap**: Can depend on all layers; NO layer can depend on Bootstrap
 - **Lateral Rule**: Presentation ↔ Infrastructure cannot depend on each other
+
+---
+
+## Library Architecture (4-Layer with 3-Package API)
+
+For reusable libraries (like tzif) consumed by other Ada projects:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    API Layer (outermost)                 │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │  API Facade ──► API.Desktop ──► API.Operations  │    │
+│  │  (public)       (composition)   (SPARK-safe)    │    │
+│  │                      │                │         │    │
+│  │                      ▼                │         │    │
+│  │              Infrastructure           │         │    │
+│  │                      │                │         │    │
+│  │                      ▼                ▼         │    │
+│  │  ┌───────────────────────────────────────────┐ │    │
+│  │  │              Application                   │ │    │
+│  │  │                    │                       │ │    │
+│  │  │              ┌──────────┐                  │ │    │
+│  │  │              │  Domain  │                  │ │    │
+│  │  │              └──────────┘                  │ │    │
+│  │  └───────────────────────────────────────────┘ │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Library Layer Rules:**
+- **Domain**: ZERO dependencies (innermost core)
+- **Application**: Depends ONLY on Domain
+- **Infrastructure**: Depends on Application + Domain
+- **API.Operations**: Depends ONLY on Application + Domain (SPARK-safe boundary)
+- **API.Desktop**: Composition root - can depend on ALL layers including Infrastructure
+- **API Facade**: Re-exports types, delegates to API.Desktop
+
+### The 3-Package API Pattern
+
+Libraries use a **3-package API pattern** instead of Bootstrap/Presentation:
+
+| Package | Role | Equivalent in Apps | Dependencies | SPARK |
+|---------|------|-------------------|--------------|-------|
+| **API.Operations** | SPARK-safe operations | *(no equivalent)* | Application + Domain only | On |
+| **API.Desktop** | Composition root | Bootstrap | All layers | Off |
+| **API Facade** | Public interface | Presentation | Delegates to Desktop | Off |
+
+**Why three packages?**
+
+1. **API.Operations** - Enables formal verification via SPARK. Generic package parameterized by output ports. No Infrastructure dependencies.
+
+2. **API.Desktop** - Platform-specific wiring. Instantiates API.Operations with concrete Infrastructure adapters (e.g., Console_Writer). Other variants possible: API.Embedded, API.Web, API.Test.
+
+3. **API Facade** - Clean public interface for consumers. Re-exports Domain/Application types. Delegates operations to API.Desktop.
+
+### Mapping Between Patterns
+
+The library pattern is NOT a 1:1 mapping to the application pattern:
+
+```
+APPLICATION                         LIBRARY
+═══════════                         ═══════
+Bootstrap (composition root)   ──►  API.Desktop (composition root)
+Presentation (public UI/CLI)   ──►  API Facade (public interface)
+        *(no equivalent)*      ◄──  API.Operations (SPARK boundary)
+Infrastructure                 ══►  Infrastructure
+Application                    ══►  Application
+Domain                         ══►  Domain
+```
+
+**Key difference**: Libraries add `API.Operations` as a SPARK verification boundary between the public API and application logic. Applications typically don't need this because they control their own entry points.
 
 ## Critical: Preventing Transitive Domain Exposure
 
@@ -89,7 +176,7 @@ python3 scripts/arch_guard.py || exit 1
 - ✅ Detects direct dependency violations (e.g., Presentation `with Domain.*`)
 - ❌ Cannot detect transitive exposure through Application interfaces
 
-### 2. Stand-Alone Library with Library_Interface (Recommended - IMPLEMENTED implemented)
+### 2. Stand-Alone Library with Library_Interface (Recommended - IMPLEMENTED in tzif)
 
 **What it does**: Makes Application a stand-alone library with explicit public interface, preventing transitive access to Domain packages.
 
@@ -139,7 +226,7 @@ end Presentation;
 
 **Benefits**:
 - ✅ **Enforced at compile time by GPRbuild** (not just convention)
-- ✅ **IMPLEMENTED implemented library** - Application layer already configured
+- ✅ **IMPLEMENTED in tzif library** - Application layer already configured
 - ✅ No folder restructuring needed
 - ✅ Clear separation without DTOs (if Domain types are designed for external use)
 
@@ -247,7 +334,7 @@ end Application.Usecase.Find_By_Id;
 
 ## Recommendations by Project Type
 
-### Library Projects (like Hybrid_App_Go)
+### Library Projects (like tzif)
 
 **Current Approach**:
 - Domain types ARE exposed through Application layer
@@ -314,7 +401,7 @@ jobs:
 
 ## Summary
 
-| Strategy | Compile-Time | Transitive Prevention | Effort | Strictness | Status implemented |
+| Strategy | Compile-Time | Transitive Prevention | Effort | Strictness | Status in tzif |
 |----------|-------------|---------------------|--------|------------|----------------|
 | Arch Guard Script | ✅ Direct deps | ❌ | Low | Medium | ✅ Implemented |
 | Stand-Alone Library | ✅ Complete | ✅ | Low | High | ✅ Implemented |
@@ -323,7 +410,7 @@ jobs:
 
 **Best Practice for Executable Projects**: Use **Stand-Alone Library** + **Architecture Guard Script**.
 
-**Implementation**:
+**tzif Implementation**:
 - ✅ Application layer configured as stand-alone library with explicit `Library_Interface`
 - ✅ Domain packages NOT included in `Library_Interface` (transitive access prevented)
 - ✅ Architecture guard script validates direct dependencies

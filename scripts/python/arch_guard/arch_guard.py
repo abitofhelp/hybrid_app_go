@@ -470,9 +470,9 @@ def main() -> int:
     if args.project_root:
         project_root = args.project_root.resolve()
     else:
-        # Script is in <root>/scripts/arch_guard/
+        # Script is in <root>/scripts/python/arch_guard/
         script_dir = Path(__file__).parent
-        project_root = script_dir.parent.parent
+        project_root = script_dir.parent.parent.parent
 
     print("=" * 70)
     print("Hexagonal Architecture Guard (Unified)")

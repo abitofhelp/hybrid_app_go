@@ -151,7 +151,7 @@ clean-coverage:
 
 clean-clutter: ## Remove temporary files, backups, and clutter
 	@echo "$(CYAN)Cleaning temporary files and clutter...$(NC)"
-	@$(PYTHON3) scripts/makefile/cleanup_temp_files.py
+	@$(PYTHON3) scripts/python/makefile/cleanup_temp_files.py
 	@echo "$(GREEN)✓ Temporary files removed$(NC)"
 
 compress:
@@ -338,7 +338,7 @@ check: lint vet check-arch
 
 check-arch: ## Validate hexagonal architecture boundaries
 	@echo "$(GREEN)Validating architecture boundaries...$(NC)"
-	@PYTHONPATH=scripts $(PYTHON3) -m arch_guard
+	@PYTHONPATH=scripts/python $(PYTHON3) -m arch_guard
 	@if [ $$? -eq 0 ]; then \
 		echo "$(GREEN)✓ Architecture validation passed$(NC)"; \
 	else \
