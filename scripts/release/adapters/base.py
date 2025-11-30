@@ -1320,3 +1320,72 @@ class BaseReleaseAdapter(ABC):
                 print(finding)
 
         return is_clean, findings
+
+    def scan_for_long_files(self, config, max_lines: int = 800) -> Tuple[bool, List[str]]:
+        """
+        Scan source files for those exceeding the line limit.
+
+        Long files often indicate need for refactoring or decomposition.
+        This is advisory - user can continue without penalty.
+
+        Args:
+            config: ReleaseConfig instance
+            max_lines: Maximum lines before flagging (default 800)
+
+        Returns:
+            Tuple of (is_clean, list_of_findings)
+            is_clean: True if NO files exceed limit
+            findings: List of file details exceeding limit
+        """
+        print(f"Scanning for source files exceeding {max_lines} lines...")
+        findings = []
+
+        # File patterns to scan (polyglot)
+        file_patterns = ['**/*.ads', '**/*.adb', '**/*.go', '**/*.py', '**/*.rs']
+
+        # Directories to exclude
+        exclude_dirs = [
+            'vendor/', 'node_modules/', '.git/', 'alire/cache/',
+            '__pycache__/', '.mypy_cache/', 'obj/', 'lib/', 'bin/',
+        ]
+
+        # Collect all source files
+        source_files = []
+        for pattern in file_patterns:
+            source_files.extend(config.project_root.glob(pattern))
+
+        # Filter excluded directories
+        source_files = [
+            f for f in source_files
+            if not any(excl in str(f) for excl in exclude_dirs)
+        ]
+
+        print(f"  Checking {len(source_files)} source files...")
+
+        for file_path in source_files:
+            try:
+                content = file_path.read_text(encoding='utf-8')
+                line_count = content.count('\n') + 1
+                rel_path = file_path.relative_to(config.project_root)
+
+                if line_count > max_lines:
+                    findings.append(
+                        f"  {rel_path}: {line_count} lines (exceeds {max_lines})"
+                    )
+
+            except Exception as e:
+                print(f"  ⚠ Error reading {file_path}: {e}")
+
+        # Sort by line count (descending) - extract count from string
+        findings.sort(key=lambda x: int(x.split(': ')[1].split(' ')[0]), reverse=True)
+
+        is_clean = len(findings) == 0
+
+        if is_clean:
+            print(f"  ✓ All {len(source_files)} files are under {max_lines} lines")
+        else:
+            print(f"\n  Found {len(findings)} file(s) exceeding {max_lines} lines:")
+            for finding in findings:
+                print(finding)
+
+        return is_clean, findings

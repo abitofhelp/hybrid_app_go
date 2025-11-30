@@ -420,6 +420,23 @@ You can:
         if not prompt_user_continue(message):
             return False
 
+    # Step 0g: Scan for long files
+    print_info("\nStep 0g: Scanning for long source files...")
+    is_clean, long_files = adapter.scan_for_long_files(config, max_lines=800)
+    if not is_clean:
+        message = f"""Found {len(long_files)} source file(s) exceeding 800 lines.
+
+Long files may indicate:
+- Need for refactoring or decomposition
+- Single Responsibility Principle violations
+- Accumulated technical debt
+
+You can:
+- Press ENTER to acknowledge and continue (advisory only)
+- Press 'q' to quit and refactor before releasing"""
+        if not prompt_user_continue(message):
+            return False
+
     # Step 1: Clean up temporary files
     print_info("\nStep 1: Cleaning up temporary files...")
     if not adapter.cleanup_temp_files(config):
