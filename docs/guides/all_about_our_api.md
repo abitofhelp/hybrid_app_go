@@ -11,11 +11,11 @@
 
 ## About This Document
 
-This guide explains the **three-package API pattern** used in projects built on our hybrid architecture reference design. TZif implements this pattern for its timezone operations.
+This guide explains the **three-package API pattern** used in projects built on our hybrid architecture reference design.
 
-The examples below use `Hybrid_Lib_Ada` with a simplified "Greet" use case to illustrate the architectural concepts clearly. The same patterns apply to TZif's timezone operations (`Find_By_Id`, `Get_Version`, `Find_My_Id`, etc.) - only the domain-specific types and operations differ.
+The examples below use `hybrid_app_go` with a simplified "Greet" use case to illustrate the architectural concepts clearly. The same patterns apply to any project using this architecture - only the domain-specific types and operations differ.
 
-**Key takeaway:** Understand the pattern here, then see it applied in the actual TZif source code.
+**Key takeaway:** Understand the pattern here, then apply it to your own projects.
 
 ---
 

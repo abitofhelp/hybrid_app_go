@@ -11,7 +11,7 @@ This document explains how to build the library for different target platforms.
 
 ## Overview
 
-tzif supports multiple build profiles for different target platforms. Each profile configures:
+Hybrid App Go supports multiple build profiles for different target platforms. Each profile configures:
 
 - **Bounded string sizes** (Max_Name_Length, Max_Message_Length, Max_Error_Length)
 - **Runtime settings** (Enable_Contracts, Enable_Debug)
@@ -37,25 +37,25 @@ tzif supports multiple build profiles for different target platforms. Each profi
 alr build
 
 # Embedded profile
-alr build -- -XTZIF_PROFILE=embedded
+alr build -- -XHYBRID_APP_PROFILE=embedded
 
 # Baremetal profile
-alr build -- -XTZIF_PROFILE=baremetal
+alr build -- -XHYBRID_APP_PROFILE=baremetal
 
 # Concurrent profile
-alr build -- -XTZIF_PROFILE=concurrent
+alr build -- -XHYBRID_APP_PROFILE=concurrent
 
 # STM32H7S78-DK profile
-alr build -- -XTZIF_PROFILE=stm32h7s78
+alr build -- -XHYBRID_APP_PROFILE=stm32h7s78
 
 # STM32MP135F-DK Linux profile
-alr build -- -XTZIF_PROFILE=stm32mp135_linux
+alr build -- -XHYBRID_APP_PROFILE=stm32mp135_linux
 ```
 
 ### Using gprbuild Directly
 
 ```bash
-gprbuild -P tzif.gpr -XTZIF_PROFILE=embedded
+gprbuild -P hybrid_app_go.gpr -XHYBRID_APP_PROFILE=embedded
 ```
 
 ### Using Make
@@ -67,7 +67,7 @@ make build-profiles
 
 ## How It Works
 
-1. **GPR Variable**: The `TZIF_PROFILE` external variable selects the profile
+1. **GPR Variable**: The `HYBRID_APP_PROFILE` external variable selects the profile
 2. **Source_Dirs Switch**: The GPR uses a `case` statement to include the profile-specific config:
 
 ```ada
@@ -80,14 +80,14 @@ case Profile is
 end case;
 ```
 
-3. **Config Package**: Each profile has its own `Tzif_Config` package in `config/profiles/<profile>/tzif_config.ads`
+3. **Config Package**: Each profile has its own `Hybrid_App_Go_Config` package in `config/profiles/<profile>/hybrid_app_go_config.ads`
 
 ## Profile Configuration
 
 Each profile config provides these constants:
 
 ```ada
-package Tzif_Config is
+package Hybrid_App_Go_Config is
    pragma Pure;
 
    Profile_Name    : constant String := "...";
@@ -104,14 +104,14 @@ package Tzif_Config is
    --  Runtime configuration
    Enable_Contracts : constant Boolean := ...;
    Enable_Debug     : constant Boolean := ...;
-end Tzif_Config;
+end Hybrid_App_Go_Config;
 ```
 
 ## Adding a New Profile
 
 1. Create directory: `config/profiles/<profile_name>/`
-2. Create config file: `tzif_config.ads` with appropriate values
-3. Add the profile to the `Profile_Type` in `tzif.gpr`
+2. Create config file: `hybrid_app_go_config.ads` with appropriate values
+3. Add the profile to the `Profile_Type` in `hybrid_app_go.gpr`
 4. Add the `case` branch for Source_Dirs
 5. Update the PROFILES list in `Makefile` build-profiles target
 

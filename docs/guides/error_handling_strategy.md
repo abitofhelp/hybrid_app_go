@@ -11,7 +11,7 @@
 
 ## Overview
 
-TZif implements **Railway-Oriented Programming** using the **Result monad pattern** for pure functional error handling. This approach eliminates exceptions from business logic, making error paths explicit, composable, and type-safe.
+Hybrid App Go implements **Railway-Oriented Programming** using the **Result monad pattern** for pure functional error handling. This approach eliminates exceptions from business logic, making error paths explicit, composable, and type-safe.
 
 **Core Principle**: **NO EXCEPTIONS for business logic** - All fallible operations return `Result[T, Error]`.
 
@@ -79,13 +79,13 @@ function Error_Info (Self : Result) return Error_Type;  -- Pre: Is_Error
 
 **Structure**:
 ```
-TZif.Domain.Value_Object.Zone_Id         -- Private type
-TZif.Domain.Value_Object.Zone_Id.Result  -- Result wrapper + validation
+Hybrid_App_Go.Domain.Value_Object.Zone_Id         -- Private type
+Hybrid_App_Go.Domain.Value_Object.Zone_Id.Result  -- Result wrapper + validation
 ```
 
 **Parent Package (Private Type)**:
 ```ada
-package TZif.Domain.Value_Object.Zone_Id is
+package Hybrid_App_Go.Domain.Value_Object.Zone_Id is
    type Zone_Id_Type is private;
 
    -- Simple constructors (may raise Ada.Strings.Length_Error)
@@ -105,13 +105,13 @@ private
    -- Unchecked constructor (used by Result wrapper)
    function Make_Unchecked (Id : String) return Zone_Id_Type
      with Pre => Id'Length <= Max_Zone_ID_Length;
-end TZif.Domain.Value_Object.Zone_Id;
+end Hybrid_App_Go.Domain.Value_Object.Zone_Id;
 ```
 
 **Child Package (Validated Construction)**:
 ```ada
-package TZif.Domain.Value_Object.Zone_Id.Result is
-   package Impl is new TZif.Domain.Error.Result.Generic_Result
+package Hybrid_App_Go.Domain.Value_Object.Zone_Id.Result is
+   package Impl is new Hybrid_App_Go.Domain.Error.Result.Generic_Result
      (T => Zone_Id_Type);
 
    subtype Result is Impl.Result;
@@ -125,7 +125,7 @@ package TZif.Domain.Value_Object.Zone_Id.Result is
 
    -- Smart constructor (NO EXCEPTIONS)
    function Validate_Zone_Id (Id : String) return Result;
-end TZif.Domain.Value_Object.Zone_Id.Result;
+end Hybrid_App_Go.Domain.Value_Object.Zone_Id.Result;
 ```
 
 **Usage**:
@@ -291,7 +291,7 @@ Assert(Contains(Error.Message, "cannot be empty"),
    - Empty databases
 
 3. **Parse Errors**
-   - Invalid TZif magic number
+   - Invalid file magic number
    - Corrupted headers
    - Truncated files
    - Malformed binary data
@@ -327,8 +327,8 @@ return Error(Parse_Error, "Invalid file");
 
 -- ✅ GOOD: Specific and actionable
 return Error(Parse_Error,
-             "TZif magic number validation failed: " &
-             "expected 'TZif', got '" & Found & "' " &
+             "File magic number validation failed: " &
+             "expected 'MAGIC', got '" & Found & "' " &
              "at offset 0 in file " & Filename);
 
 -- ❌ BAD: No context

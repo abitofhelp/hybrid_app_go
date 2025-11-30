@@ -12,7 +12,7 @@ This document explains how to enforce hexagonal/clean architecture rules in Ada 
 
 ## Architecture Rules
 
-The tzif library follows strict center-seeking dependency rules:
+The Hybrid App Go library follows strict center-seeking dependency rules:
 
 ```
 ┌──────────────────────────────────────┐
@@ -89,7 +89,7 @@ python3 scripts/arch_guard.py || exit 1
 - ✅ Detects direct dependency violations (e.g., Presentation `with Domain.*`)
 - ❌ Cannot detect transitive exposure through Application interfaces
 
-### 2. Stand-Alone Library with Library_Interface (Recommended - IMPLEMENTED in tzif)
+### 2. Stand-Alone Library with Library_Interface (Recommended - IMPLEMENTED implemented)
 
 **What it does**: Makes Application a stand-alone library with explicit public interface, preventing transitive access to Domain packages.
 
@@ -139,7 +139,7 @@ end Presentation;
 
 **Benefits**:
 - ✅ **Enforced at compile time by GPRbuild** (not just convention)
-- ✅ **IMPLEMENTED in tzif library** - Application layer already configured
+- ✅ **IMPLEMENTED implemented library** - Application layer already configured
 - ✅ No folder restructuring needed
 - ✅ Clear separation without DTOs (if Domain types are designed for external use)
 
@@ -247,7 +247,7 @@ end Application.Usecase.Find_By_Id;
 
 ## Recommendations by Project Type
 
-### Library Projects (like tzif)
+### Library Projects (like Hybrid_App_Go)
 
 **Current Approach**:
 - Domain types ARE exposed through Application layer
@@ -314,7 +314,7 @@ jobs:
 
 ## Summary
 
-| Strategy | Compile-Time | Transitive Prevention | Effort | Strictness | Status in tzif |
+| Strategy | Compile-Time | Transitive Prevention | Effort | Strictness | Status implemented |
 |----------|-------------|---------------------|--------|------------|----------------|
 | Arch Guard Script | ✅ Direct deps | ❌ | Low | Medium | ✅ Implemented |
 | Stand-Alone Library | ✅ Complete | ✅ | Low | High | ✅ Implemented |
@@ -323,7 +323,7 @@ jobs:
 
 **Best Practice for Executable Projects**: Use **Stand-Alone Library** + **Architecture Guard Script**.
 
-**tzif Implementation**:
+**Implementation**:
 - ✅ Application layer configured as stand-alone library with explicit `Library_Interface`
 - ✅ Domain packages NOT included in `Library_Interface` (transitive access prevented)
 - ✅ Architecture guard script validates direct dependencies
