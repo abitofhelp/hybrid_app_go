@@ -2,6 +2,13 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8.svg)](https://go.dev)
 
+**Version:** 1.0.1<br>
+**Date:** 2025-11-29<br>
+**SPDX-License-Identifier:** BSD-3-Clause<br>
+**License File:** See the LICENSE file in the project root<br>
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
+
 ## Overview
 
 A **professional Go application** demonstrating **hybrid DDD/Clean/Hexagonal architecture** with **strict module boundaries** enforced via Go workspaces and **functional programming** principles using custom **domain-level Result/Option monads** (ZERO external module dependencies in domain layer).
