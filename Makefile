@@ -421,3 +421,23 @@ diagrams: ## Generate SVG diagrams from PlantUML sources
 	@echo "$(GREEN)✓ Diagrams generated$(NC)"
 
 .DEFAULT_GOAL := help
+
+## ---------------------------------------------------------------------------
+## Submodule Management
+## ---------------------------------------------------------------------------
+
+.PHONY: submodule-update submodule-status submodule-init
+
+submodule-init: ## Initialize submodules after fresh clone
+	git submodule update --init --recursive
+
+submodule-update: ## Pull latest from all submodule repos
+	git submodule update --remote --merge
+	@echo ""
+	@echo "Submodules updated. Review changes, then run:"
+	@echo "  git add scripts/python test/python"
+	@echo "  git commit -m 'chore: update submodules'"
+	@echo "  git push"
+
+submodule-status: ## Show submodule commit status
+	git submodule status
