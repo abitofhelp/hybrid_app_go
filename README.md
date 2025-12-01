@@ -23,6 +23,23 @@ This is a **desktop/enterprise application template** showcasing:
 - **Presentation Isolation** pattern (only Domain is shareable across apps)
 - **Multi-Module Workspace** (compiler-enforced boundaries)
 
+## Getting Started
+
+### Clone with Submodules
+
+This repository uses git submodules for shared tooling. Clone with:
+
+```bash
+git clone --recurse-submodules https://github.com/abitofhelp/hybrid_app_go.git
+```
+
+Or if already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+# Or: make submodule-init
+```
+
 ## Features
 
 - ✅ Multi-module workspace structure with go.work
