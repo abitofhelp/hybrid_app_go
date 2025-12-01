@@ -30,6 +30,33 @@ class GoAdapter(LanguageAdapter):
     # Cache for module path
     _module_path_cache: dict = {}
 
+    def is_domain_allowed_import(self, import_path: str) -> bool:
+        """
+        Check if an import is allowed in Go Domain layer.
+
+        Go stdlib imports are allowed (no dots = stdlib single-word package,
+        or paths without hostname like 'encoding/json').
+        """
+        # Go stdlib packages don't have dots (e.g., fmt, os, errors, context)
+        # Multi-word stdlib paths also don't have dots (e.g., encoding/json)
+        if '.' not in import_path:
+            return True
+
+        # golang.org/x/* is quasi-official extended stdlib
+        if import_path.startswith('golang.org/x/'):
+            return True
+
+        # Project config packages (unlikely in Go but keep for consistency)
+        normalized = import_path.lower()
+        if normalized.endswith('_config'):
+            return True
+
+        # Project-local domain packages
+        if '/domain/' in import_path or import_path.endswith('/domain'):
+            return True
+
+        return False
+
     @property
     def name(self) -> str:
         return "Go"
