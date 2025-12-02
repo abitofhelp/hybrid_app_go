@@ -4,6 +4,6 @@
 [submodule "test/python"]
 	path = test/python
 	url = https://github.com/abitofhelp/hybrid_test_python.git
-[submodule "docs/common"]
-	path = docs/common
+[submodule "docs"]
+	path = docs
 	url = https://github.com/abitofhelp/hybrid_app_docs.git
