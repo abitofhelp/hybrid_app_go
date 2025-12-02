@@ -18,7 +18,7 @@ BINARY_NAME := greeter
 .PHONY: all build build-dev build-release clean clean-clutter clean-coverage clean-deep compress \
         deps help prereqs rebuild stats test test-all test-unit \
         test-integration test-e2e test-framework test-coverage test-coverage-threshold test-python \
-        check check-arch lint format vet install-tools run diagrams
+        check check-arch lint format vet install-tools run
 
 # =============================================================================
 # Colors for Output
@@ -102,6 +102,11 @@ help: ## Display this help message
 	@echo ""
 	@echo "$(YELLOW)Workflow Shortcuts:$(NC)"
 	@echo "  all                - Build project (default)"
+	@echo ""
+	@echo "$(YELLOW)Submodule Commands:$(NC)"
+	@echo "  submodule-init     - Initialize submodules after fresh clone"
+	@echo "  submodule-update   - Pull latest from all submodule repos"
+	@echo "  submodule-status   - Show submodule commit status"
 
 # =============================================================================
 # Build Commands
@@ -411,15 +416,6 @@ install-tools: ## Install development tools
 	@$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@echo "$(GREEN)✓ Tool installation complete$(NC)"
 
-diagrams: ## Generate SVG diagrams from PlantUML sources
-	@echo "$(CYAN)Generating SVG diagrams from PlantUML...$(NC)"
-	@command -v plantuml >/dev/null 2>&1 || { echo "$(RED)Error: plantuml not found. Install with: brew install plantuml$(NC)"; exit 1; }
-	@cd docs/diagrams && for f in *.puml; do \
-		echo "  Processing $$f..."; \
-		plantuml -tsvg "$$f"; \
-	done
-	@echo "$(GREEN)✓ Diagrams generated$(NC)"
-
 .DEFAULT_GOAL := help
 
 ## ---------------------------------------------------------------------------
@@ -435,7 +431,7 @@ submodule-update: ## Pull latest from all submodule repos
 	git submodule update --remote --merge
 	@echo ""
 	@echo "Submodules updated. Review changes, then run:"
-	@echo "  git add scripts/python test/python"
+	@echo "  git add docs scripts/python test/python"
 	@echo "  git commit -m 'chore: update submodules'"
 	@echo "  git push"
 
