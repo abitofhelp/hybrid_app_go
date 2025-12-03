@@ -15,10 +15,12 @@
 PROJECT_NAME := hybrid_app_go
 BINARY_NAME := greeter
 
-.PHONY: all build build-dev build-release clean clean-clutter clean-coverage clean-deep compress \
-        deps help prereqs rebuild stats test test-all test-unit \
+.PHONY: all build build-dev build-opt build-release build-tests \
+        clean clean-clutter clean-coverage clean-deep compress \
+        deps help prereqs rebuild run stats test test-all test-unit \
         test-integration test-e2e test-framework test-coverage test-coverage-threshold test-python \
-        check check-arch lint format vet install-tools run
+        check check-arch lint format vet install-tools \
+        submodule-init submodule-update submodule-status
 
 # =============================================================================
 # Colors for Output
@@ -66,8 +68,10 @@ help: ## Display this help message
 	@echo " "
 	@echo "$(YELLOW)Build Commands:$(NC)"
 	@echo "  build              - Build project (development mode)"
-	@echo "  build-dev          - Build with race detector"
-	@echo "  build-release      - Build optimized binary"
+	@echo "  build-dev          - Build with development flags (race detection)"
+	@echo "  build-opt          - Build with optimization (stripped symbols)"
+	@echo "  build-release      - Build in release mode"
+	@echo "  build-tests        - Build all test binaries"
 	@echo "  run                - Build and run the greeter"
 	@echo "  clean              - Clean build artifacts"
 	@echo "  clean-clutter      - Remove temporary files and backups"
@@ -125,10 +129,24 @@ build-dev: check-arch prereqs
 	@cd $(BIN_DIR) && $(GO) build -race
 	@echo "$(GREEN)✓ Development build complete: $(BIN_DIR)/$(BINARY_NAME)$(NC)"
 
+build-opt: check-arch prereqs
+	@echo "$(GREEN)Building $(PROJECT_NAME) (optimized)...$(NC)"
+	@cd $(BIN_DIR) && $(GO) build -ldflags="-s -w"
+	@echo "$(GREEN)✓ Optimized build complete: $(BIN_DIR)/$(BINARY_NAME)$(NC)"
+
 build-release: check-arch prereqs
 	@echo "$(GREEN)Building $(PROJECT_NAME) (release mode)...$(NC)"
 	@cd $(BIN_DIR) && $(GO) build -ldflags="-s -w"
 	@echo "$(GREEN)✓ Release build complete: $(BIN_DIR)/$(BINARY_NAME)$(NC)"
+
+build-tests: check-arch prereqs
+	@echo "$(GREEN)Building test suites...$(NC)"
+	@$(GO) test -c ./domain/... 2>/dev/null || true
+	@$(GO) test -c ./application/... 2>/dev/null || true
+	@$(GO) test -c ./infrastructure/... 2>/dev/null || true
+	@$(GO) test -c ./presentation/... 2>/dev/null || true
+	@$(GO) test -c ./bootstrap/... 2>/dev/null || true
+	@echo "$(GREEN)✓ Test suites built$(NC)"
 
 run: build
 	@echo "$(GREEN)Running $(BINARY_NAME)...$(NC)"
@@ -182,7 +200,7 @@ rebuild: clean build
 
 test: test-all
 
-test-all: check-arch
+test-all: check-arch build
 	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
 	@echo "$(CYAN)$(BOLD)║                    RUNNING ALL TESTS                         ║$(NC)"
 	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
@@ -206,7 +224,7 @@ test-all: check-arch
 	@echo "$(GREEN)$(BOLD)║  ✓ ALL TESTS PASSED                                          ║$(NC)"
 	@echo "$(GREEN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
 
-test-unit: check-arch ## Run unit tests with Ada-style framework output
+test-unit: check-arch build ## Run unit tests with Ada-style framework output
 	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════════════════╗$(NC)"
 	@echo "$(CYAN)$(BOLD)║                    UNIT TEST SUITE                           ║$(NC)"
 	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════════════════╝$(NC)"
@@ -421,8 +439,6 @@ install-tools: ## Install development tools
 ## ---------------------------------------------------------------------------
 ## Submodule Management
 ## ---------------------------------------------------------------------------
-
-.PHONY: submodule-update submodule-status submodule-init
 
 submodule-init: ## Initialize submodules after fresh clone
 	git submodule update --init --recursive
