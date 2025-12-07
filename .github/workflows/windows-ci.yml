@@ -1,0 +1,80 @@
+# =============================================================================
+# Windows CI Workflow
+# =============================================================================
+# Purpose:
+#   Validates application builds and tests pass on Windows platform.
+#   Runs on every push and PR to main/develop branches.
+#
+# Platform:
+#   - Windows Server 2022 (windows-latest)
+#   - Go 1.23+
+# =============================================================================
+
+name: Windows CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+
+jobs:
+  windows-build-and-test:
+    name: Windows Build & Test
+    runs-on: windows-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Setup Go
+      # -----------------------------------------------------------------------
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      # -----------------------------------------------------------------------
+      # Build application
+      # -----------------------------------------------------------------------
+      - name: Build application
+        shell: bash
+        run: |
+          echo "Building hybrid_app_go for Windows..."
+          go build ./...
+          echo "Build complete"
+
+      # -----------------------------------------------------------------------
+      # Run tests
+      # -----------------------------------------------------------------------
+      - name: Run tests
+        shell: bash
+        run: |
+          echo "========================================"
+          echo "Running Tests"
+          echo "========================================"
+          go test -v ./...
+          echo "Tests complete"
+
+      # -----------------------------------------------------------------------
+      # Test Summary
+      # -----------------------------------------------------------------------
+      - name: Test Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "========================================"
+          echo "Windows CI Complete"
+          echo "========================================"
+          echo "Platform: windows-latest (Windows Server 2022)"
+          echo "Go: 1.23"
