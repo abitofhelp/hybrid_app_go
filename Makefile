@@ -77,7 +77,7 @@ help: ## Display this help message
 	@echo "  clean-clutter      - Remove temporary files and backups"
 	@echo "  clean-coverage     - Clean coverage data"
 	@echo "  clean-deep         - Deep clean (includes module cache)"
-	@echo "  compress           - Create compressed source archive (tar.gz)"
+	@echo "  compress           - Create compressed source archive (tgz)"
 	@echo "  rebuild            - Clean and rebuild"
 	@echo ""
 	@echo "$(YELLOW)Testing Commands:$(NC)"
@@ -180,18 +180,8 @@ clean-clutter: ## Remove temporary files, backups, and clutter
 
 compress:
 	@echo "$(CYAN)Creating compressed source archive...$(NC)"
-	@tar -czvf "$(PROJECT_NAME).tar.gz" \
-		--exclude="$(PROJECT_NAME).tar.gz" \
-		--exclude='.git' \
-		--exclude='vendor' \
-		--exclude='bin' \
-		--exclude='.build' \
-		--exclude='coverage' \
-		--exclude='.DS_Store' \
-		--exclude='*.test' \
-		--exclude='*.out' \
-		.
-	@echo "$(GREEN)✓ Archive created: $(PROJECT_NAME).tar.gz$(NC)"
+	git archive --format=tar.gz -o "$(PROJECT_NAME).tgz" HEAD
+	@echo "$(GREEN)✓ Archive created: $(PROJECT_NAME).tgz$(NC)"
 
 rebuild: clean build
 
