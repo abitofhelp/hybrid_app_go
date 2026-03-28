@@ -207,3 +207,4 @@ ENV/
 *.zip
 *.tar.gz
 /cmd/greeter/greeter
+*.tgz
